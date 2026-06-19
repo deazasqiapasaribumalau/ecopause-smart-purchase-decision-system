@@ -153,6 +153,7 @@ class EcoChip extends StatelessWidget {
   }
 }
 
+// PERBAIKAN: EcoButton menggunakan ElevatedButton
 class EcoButton extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
@@ -185,59 +186,58 @@ class EcoButton extends StatelessWidget {
     return SizedBox(
       width: width ?? double.infinity,
       height: height,
-      child: GestureDetector(
-        onTap: isDisabled ? null : onTap,
-        child: Container(
+      child: ElevatedButton(
+        onPressed: isDisabled ? null : onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: outline ? Colors.transparent : (isDisabled ? c.withOpacity(0.5) : c),
+          foregroundColor: outline ? c : AppTheme.white,
+          elevation: 0,
           padding: padding ?? const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-          decoration: BoxDecoration(
-            color: outline
-                ? Colors.transparent
-                : (isDisabled ? c.withOpacity(0.5) : c),
+          shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
+            side: BorderSide(
               color: isDisabled ? c.withOpacity(0.5) : c,
               width: 2,
             ),
           ),
-          alignment: Alignment.center,
-          child: loading
-              ? SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: outline ? c : AppTheme.white,
-                  ),
-                )
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (icon != null) ...[
-                      Icon(
-                        icon,
-                        size: 20,
-                        color: outline ? c : AppTheme.white,
-                      ),
-                      const SizedBox(width: 10),
-                    ],
-                    Text(
-                      label,
-                      style: GoogleFonts.nunito(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: outline ? c : AppTheme.white,
-                      ),
-                    ),
-                  ],
-                ),
+          minimumSize: const Size(0, 0),
         ),
+        child: loading
+            ? SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: outline ? c : AppTheme.white,
+                ),
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (icon != null) ...[
+                    Icon(
+                      icon,
+                      size: 20,
+                      color: outline ? c : AppTheme.white,
+                    ),
+                    const SizedBox(width: 10),
+                  ],
+                  Text(
+                    label,
+                    style: GoogleFonts.nunito(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: outline ? c : AppTheme.white,
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }
 }
 
-// Widget baru: EcoTextField
 class EcoTextField extends StatelessWidget {
   final TextEditingController? controller;
   final String label;
@@ -338,7 +338,6 @@ class EcoTextField extends StatelessWidget {
   }
 }
 
-// Widget baru: EcoLoadingShimmer
 class EcoLoadingShimmer extends StatelessWidget {
   final Widget child;
   final bool isLoading;
@@ -359,7 +358,6 @@ class EcoLoadingShimmer extends StatelessWidget {
   }
 }
 
-// Widget untuk shimmer effect
 class Shimmer extends StatefulWidget {
   final Widget child;
 
@@ -584,7 +582,6 @@ class ErrorBanner extends StatelessWidget {
   }
 }
 
-// Widget baru: EcoEmptyState
 class EcoEmptyState extends StatelessWidget {
   final String title;
   final String? subtitle;

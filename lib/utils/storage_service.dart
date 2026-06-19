@@ -178,4 +178,8 @@ class StorageService {
       }
     }
   }
+
+  static Future<void> saveLog(ShoppingLog log) async {}
+
+  static Future<void> deleteWishlistItem(String id) async {}
 }

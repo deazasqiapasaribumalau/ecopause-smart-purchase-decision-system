@@ -68,7 +68,9 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
 class _DashboardPage extends StatefulWidget {
   final AuthProvider auth;
   const _DashboardPage({required this.auth});
-  @override State<_DashboardPage> createState() => _DashboardPageState();
+
+  @override
+  State<_DashboardPage> createState() => _DashboardPageState();
 }
 
 class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveClientMixin {
@@ -86,8 +88,10 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
     _load();
   }
 
+  AuthProvider get _auth => widget.auth;
+
   Future<void> _load() async {
-    final uid = widget.auth.user!.id;
+    final uid = _auth.user!.id;
     
     await Future.microtask(() async {
       final results = await Future.wait([
@@ -118,7 +122,7 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
   Widget build(BuildContext context) {
     super.build(context);
     
-    final user = widget.auth.user!;
+    final user = _auth.user!;
     final hour = DateTime.now().hour;
     final greeting = hour < 12 ? 'Selamat Pagi' : hour < 18 ? 'Selamat Siang' : 'Selamat Malam';
 
@@ -128,108 +132,114 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
         onRefresh: _load,
         color: AppTheme.sage,
         child: CustomScrollView(
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
           slivers: [
-            // Header dengan gradient
+            // Header dengan gradient - OPTIMIZED
             SliverAppBar(
-              expandedHeight: 130,
+              expandedHeight: 110,
               pinned: true,
               backgroundColor: AppTheme.forest,
-              flexibleSpace: FlexibleSpaceBar(
-                background: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppTheme.forest,
-                        AppTheme.forestMid,
-                      ],
-                    ),
-                  ),
-                  padding: const EdgeInsets.fromLTRB(20, 48, 20, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '$greeting,',
-                                  style: GoogleFonts.nunito(
-                                    fontSize: 12,
-                                    color: AppTheme.mint,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  user.name,
-                                  style: GoogleFonts.nunito(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w900,
-                                    color: AppTheme.cream,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.cream.withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    '🌿 Yuk, belanja lebih bijak',
-                                    style: GoogleFonts.nunito(
-                                      fontSize: 11,
-                                      color: AppTheme.cream.withOpacity(0.8),
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  AppTheme.cream.withOpacity(0.3),
-                                  AppTheme.cream.withOpacity(0.1),
-                                ],
-                              ),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppTheme.cream.withOpacity(0.3),
-                                width: 2,
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                user.name[0].toUpperCase(),
-                                style: GoogleFonts.nunito(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppTheme.cream,
-                                ),
-                              ),
-                            ),
-                          ),
+              flexibleSpace: ClipRect(
+                child: FlexibleSpaceBar(
+                  background: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          AppTheme.forest,
+                          AppTheme.forestMid,
                         ],
                       ),
-                    ],
+                    ),
+                    padding: const EdgeInsets.fromLTRB(20, 36, 20, 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text(
+                                '$greeting,',
+                                style: GoogleFonts.nunito(
+                                  fontSize: 10,
+                                  color: AppTheme.mint,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.0,
+                                ),
+                              ),
+                              Text(
+                                user.name,
+                                style: GoogleFonts.nunito(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppTheme.cream,
+                                  height: 1.0,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.cream.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '🌿 Belanja bijak',
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 8,
+                                    color: AppTheme.cream.withOpacity(0.7),
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.0,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                AppTheme.cream.withOpacity(0.25),
+                                AppTheme.cream.withOpacity(0.08),
+                              ],
+                            ),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppTheme.cream.withOpacity(0.2),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              user.name[0].toUpperCase(),
+                              style: GoogleFonts.nunito(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                                color: AppTheme.cream,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-            
+                      
+            // CONTENT
             SliverPadding(
               padding: const EdgeInsets.all(16),
               sliver: SliverList(
@@ -243,302 +253,66 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
                         ),
                       )
                     else ...[
-                      // SDG Badge dengan desain lebih baik
-                      RepaintBoundary(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                AppTheme.sage.withOpacity(0.15),
-                                AppTheme.sage.withOpacity(0.05),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: AppTheme.sage.withOpacity(0.3),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      AppTheme.sage,
-                                      AppTheme.forestMid,
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  'SDG 12',
-                                  style: GoogleFonts.nunito(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w900,
-                                    color: AppTheme.white,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  'Responsible Consumption & Production',
-                                  style: GoogleFonts.nunito(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppTheme.forest,
-                                  ),
-                                ),
-                              ),
-                              const Icon(
-                                Icons.eco_rounded,
-                                color: AppTheme.sage,
-                                size: 20,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                      _buildSDGBadge(),
                       const SizedBox(height: 16),
 
-                      // Unlock alert dengan desain lebih menarik
                       if (_unlockedCount > 0) ...[
-                        RepaintBoundary(
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  AppTheme.sage.withOpacity(0.15),
-                                  AppTheme.sage.withOpacity(0.05),
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: AppTheme.sage.withOpacity(0.4),
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: const BoxDecoration(
-                                    color: AppTheme.sage,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Text(
-                                    '🎯',
-                                    style: TextStyle(fontSize: 20),
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '$_unlockedCount Item Siap Diputuskan!',
-                                        style: GoogleFonts.nunito(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w800,
-                                          color: AppTheme.forestMid,
-                                        ),
-                                      ),
-                                      Text(
-                                        'Cooling period selesai. Beli atau lewati?',
-                                        style: GoogleFonts.nunito(
-                                          fontSize: 12,
-                                          color: AppTheme.ink.withOpacity(0.7),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.sage.withOpacity(0.1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.arrow_forward_ios_rounded,
-                                    color: AppTheme.sage,
-                                    size: 16,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                        _buildUnlockAlert(),
                         const SizedBox(height: 16),
                       ],
 
-                      // Stats row dengan desain card
-                      RepaintBoundary(
-                        child: Row(
-                          children: [
-                            _StatCard(
-                              emoji: '🚫',
-                              label: 'Pembelian\nDicegah',
-                              value: '$_skippedCount',
-                              color: AppTheme.terra,
-                              icon: Icons.block_rounded,
-                            ),
-                            const SizedBox(width: 10),
-                            _StatCard(
-                              emoji: '💰',
-                              label: 'Uang\nTerhemat',
-                              value: 'Rp ${_fmtP(_savedMoney)}',
-                              color: AppTheme.forestMid,
-                              icon: Icons.savings_rounded,
-                            ),
-                            const SizedBox(width: 10),
-                            _StatCard(
-                              emoji: '🌱',
-                              label: 'Sampah\nDicegah',
-                              value: '${_totalWaste.toStringAsFixed(1)} kg',
-                              color: AppTheme.sage,
-                              icon: Icons.recycling_rounded,
-                            ),
-                          ],
-                        ),
-                      ),
+                      _buildStatsRow(),
                       const SizedBox(height: 20),
 
-                      // Section Header dengan desain lebih baik
-                      Row(
-                        children: [
-                          Container(
-                            width: 4,
-                            height: 20,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  AppTheme.sage,
-                                  AppTheme.forestMid,
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            'Aktivitas Cepat',
-                            style: GoogleFonts.nunito(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.forest,
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            'Lihat Semua',
-                            style: GoogleFonts.nunito(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.grey,
-                            ),
-                          ),
-                          const Icon(
-                            Icons.chevron_right_rounded,
-                            color: AppTheme.grey,
-                            size: 18,
-                          ),
-                        ],
-                      ),
+                      _buildSectionHeader('Aktivitas Cepat'),
                       const SizedBox(height: 12),
                       
-                      // Quick actions dengan desain card
-                      RepaintBoundary(
-                        child: _QuickAction(
-                          emoji: '🔍',
-                          title: 'Cek Sebelum Beli',
-                          subtitle: 'Evaluasi pembelian dengan FOMO Detector',
-                          color: AppTheme.sage,
-                          icon: Icons.psychology_rounded,
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => FomoDetectorScreen(auth: widget.auth),
-                            ),
+                      _buildQuickAction(
+                        emoji: '🔍',
+                        title: 'Cek Sebelum Beli',
+                        subtitle: 'Evaluasi pembelian dengan FOMO Detector',
+                        color: AppTheme.sage,
+                        icon: Icons.psychology_rounded,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => FomoDetectorScreen(auth: _auth),
                           ),
                         ),
                       ),
                       const SizedBox(height: 10),
-                      RepaintBoundary(
-                        child: _QuickAction(
-                          emoji: '⏳',
-                          title: 'Smart Wishlist',
-                          subtitle: '$_wishlistPending item — $_unlockedCount siap',
-                          color: AppTheme.sand,
-                          icon: Icons.bookmark_rounded,
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => WishlistScreen(auth: widget.auth),
-                            ),
+                      _buildQuickAction(
+                        emoji: '⏳',
+                        title: 'Smart Wishlist',
+                        subtitle: '$_wishlistPending item — $_unlockedCount siap',
+                        color: AppTheme.sand,
+                        icon: Icons.bookmark_rounded,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => WishlistScreen(auth: _auth),
                           ),
                         ),
                       ),
                       const SizedBox(height: 10),
-                      RepaintBoundary(
-                        child: _QuickAction(
-                          emoji: '📦',
-                          title: 'Jejak Belanja',
-                          subtitle: 'Rekam dampak kemasan belanjaanmu',
-                          color: AppTheme.forestMid,
-                          icon: Icons.inventory_2_rounded,
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => JejakBelanjaScreen(auth: widget.auth),
-                            ),
+                      _buildQuickAction(
+                        emoji: '📦',
+                        title: 'Jejak Belanja',
+                        subtitle: 'Rekam dampak kemasan belanjaanmu',
+                        color: AppTheme.forestMid,
+                        icon: Icons.inventory_2_rounded,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => JejakBelanjaScreen(auth: _auth),
                           ),
                         ),
                       ),
                       const SizedBox(height: 24),
 
                       if (_evals.isNotEmpty) ...[
-                        Row(
-                          children: [
-                            Container(
-                              width: 4,
-                              height: 20,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    AppTheme.forestMid,
-                                    AppTheme.sage,
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              'Evaluasi Terakhir',
-                              style: GoogleFonts.nunito(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: AppTheme.forest,
-                              ),
-                            ),
-                          ],
-                        ),
+                        _buildSectionHeader('Evaluasi Terakhir'),
                         const SizedBox(height: 12),
                         ..._evals.reversed.take(3).map(
-                          (e) => RepaintBoundary(
+                          (e) => Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
                             child: _RecentEvalTile(eval: e),
                           ),
                         ),
@@ -557,106 +331,225 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
     );
   }
 
-  String _fmtP(double p) {
-    if (p >= 1e6) return '${(p / 1e6).toStringAsFixed(1)} jt';
-    if (p >= 1000) return '${(p / 1000).toStringAsFixed(0)} rb';
-    return p.toStringAsFixed(0);
-  }
-}
+  // ========== WIDGET BUILDERS ==========
 
-class _StatCard extends StatelessWidget {
-  final String emoji, label, value;
-  final Color color;
-  final IconData icon;
-
-  const _StatCard({
-    required this.emoji,
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppTheme.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.15), width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
+  Widget _buildSDGBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.sage.withOpacity(0.15),
+            AppTheme.sage.withOpacity(0.05),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppTheme.sage.withOpacity(0.3),
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppTheme.sage,
+                  AppTheme.forestMid,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              'SDG 12',
+              style: GoogleFonts.nunito(
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                color: AppTheme.white,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Responsible Consumption & Production',
+              style: GoogleFonts.nunito(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.forest,
+              ),
+            ),
+          ),
+          const Icon(
+            Icons.eco_rounded,
+            color: AppTheme.sage,
+            size: 20,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUnlockAlert() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.sage.withOpacity(0.15),
+            AppTheme.sage.withOpacity(0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppTheme.sage.withOpacity(0.4),
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: const BoxDecoration(
+              color: AppTheme.sage,
+              shape: BoxShape.circle,
+            ),
+            child: const Text(
+              '🎯',
+              style: TextStyle(fontSize: 20),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(emoji, style: const TextStyle(fontSize: 20)),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
+                Text(
+                  '$_unlockedCount Item Siap Diputuskan!',
+                  style: GoogleFonts.nunito(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.forestMid,
                   ),
-                  child: Icon(
-                    icon,
-                    color: color,
-                    size: 14,
+                ),
+                Text(
+                  'Cooling period selesai. Beli atau lewati?',
+                  style: GoogleFonts.nunito(
+                    fontSize: 12,
+                    color: AppTheme.ink.withOpacity(0.7),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: GoogleFonts.nunito(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: color,
-              ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.sage.withOpacity(0.1),
+              shape: BoxShape.circle,
             ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: GoogleFonts.nunito(
-                fontSize: 10,
-                color: AppTheme.ink.withOpacity(0.6),
-                height: 1.2,
-              ),
+            child: const Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: AppTheme.sage,
+              size: 16,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
-}
 
-class _QuickAction extends StatelessWidget {
-  final String emoji, title, subtitle;
-  final Color color;
-  final IconData icon;
-  final VoidCallback onTap;
+  Widget _buildStatsRow() {
+    return Row(
+      children: [
+        _StatCard(
+          emoji: '🚫',
+          label: 'Pembelian\nDicegah',
+          value: '$_skippedCount',
+          color: AppTheme.terra,
+          icon: Icons.block_rounded,
+        ),
+        const SizedBox(width: 10),
+        _StatCard(
+          emoji: '💰',
+          label: 'Uang\nTerhemat',
+          value: 'Rp ${_fmtP(_savedMoney)}',
+          color: AppTheme.forestMid,
+          icon: Icons.savings_rounded,
+        ),
+        const SizedBox(width: 10),
+        _StatCard(
+          emoji: '🌱',
+          label: 'Sampah\nDicegah',
+          value: '${_totalWaste.toStringAsFixed(1)} kg',
+          color: AppTheme.sage,
+          icon: Icons.recycling_rounded,
+        ),
+      ],
+    );
+  }
 
-  const _QuickAction({
-    required this.emoji,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-    required this.icon,
-    required this.onTap,
-  });
+  Widget _buildSectionHeader(String title) {
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 20,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppTheme.sage,
+                AppTheme.forestMid,
+              ],
+            ),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: GoogleFonts.nunito(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: AppTheme.forest,
+          ),
+        ),
+        const Spacer(),
+        Text(
+          'Lihat Semua',
+          style: GoogleFonts.nunito(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.grey,
+          ),
+        ),
+        const Icon(
+          Icons.chevron_right_rounded,
+          color: AppTheme.grey,
+          size: 18,
+        ),
+      ],
+    );
+  }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildQuickAction({
+    required String emoji,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -733,8 +626,94 @@ class _QuickAction extends StatelessWidget {
       ),
     );
   }
+
+  String _fmtP(double p) {
+    if (p >= 1e6) return '${(p / 1e6).toStringAsFixed(1)} jt';
+    if (p >= 1000) return '${(p / 1000).toStringAsFixed(0)} rb';
+    return p.toStringAsFixed(0);
+  }
 }
 
+// ========== STAT CARD ==========
+class _StatCard extends StatelessWidget {
+  final String emoji, label, value;
+  final Color color;
+  final IconData icon;
+
+  const _StatCard({
+    required this.emoji,
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppTheme.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.15), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(emoji, style: const TextStyle(fontSize: 20)),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: color,
+                    size: 14,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: GoogleFonts.nunito(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                color: color,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: GoogleFonts.nunito(
+                fontSize: 10,
+                color: AppTheme.ink.withOpacity(0.6),
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ========== RECENT EVALUATION TILE ==========
 class _RecentEvalTile extends StatelessWidget {
   final FomoEvaluation eval;
 
@@ -761,7 +740,6 @@ class _RecentEvalTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppTheme.white,
@@ -788,6 +766,8 @@ class _RecentEvalTile extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     color: AppTheme.forest,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Row(

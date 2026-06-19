@@ -54,6 +54,8 @@ class AppTheme {
         ),
       );
 
+  static Color? get bgLightGrey => null;
+
   static Color needColor(int s)  => s >= 70 ? forestMid : s >= 40 ? sand : terra;
   static Color fomoColor(int s)  => s <= 30 ? forestMid : s <= 60 ? sand : terra;
   static Color susColor(double s)=> s >= 70 ? forestMid : s >= 40 ? sand : terra;

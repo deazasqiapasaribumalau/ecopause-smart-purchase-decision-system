@@ -112,6 +112,7 @@ class WishlistItem {
   final double price;
   final DateTime addedAt;
   final int coolingDays;
+  final String? imagePath; // 🆕 TAMBAHKAN FIELD INI
   bool isBought;
   bool isSkipped;
   bool notified;
@@ -124,6 +125,7 @@ class WishlistItem {
     required this.price, 
     required this.addedAt,
     required this.coolingDays,
+    this.imagePath, // 🆕 TAMBAHKAN PARAMETER INI
     this.isBought = false, 
     this.isSkipped = false, 
     this.notified = false,
@@ -146,6 +148,7 @@ class WishlistItem {
         'price': price,
         'addedAt': addedAt.toIso8601String(),
         'coolingDays': coolingDays,
+        'imagePath': imagePath, // 🆕 TAMBAHKAN KE JSON
         'isBought': isBought, 
         'isSkipped': isSkipped, 
         'notified': notified,
@@ -159,10 +162,40 @@ class WishlistItem {
         price: (j['price'] ?? 0).toDouble(),
         addedAt: DateTime.parse(j['addedAt']),
         coolingDays: j['coolingDays'] ?? 3,
+        imagePath: j['imagePath'], // 🆕 BACA DARI JSON
         isBought: j['isBought'] ?? false,
         isSkipped: j['isSkipped'] ?? false,
         notified: j['notified'] ?? false,
       );
+
+  // 🆕 COPY WITH METHOD (untuk update data dengan mudah)
+  WishlistItem copyWith({
+    String? id,
+    String? userId,
+    String? itemName,
+    String? category,
+    double? price,
+    DateTime? addedAt,
+    int? coolingDays,
+    String? imagePath,
+    bool? isBought,
+    bool? isSkipped,
+    bool? notified,
+  }) {
+    return WishlistItem(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      itemName: itemName ?? this.itemName,
+      category: category ?? this.category,
+      price: price ?? this.price,
+      addedAt: addedAt ?? this.addedAt,
+      coolingDays: coolingDays ?? this.coolingDays,
+      imagePath: imagePath ?? this.imagePath,
+      isBought: isBought ?? this.isBought,
+      isSkipped: isSkipped ?? this.isSkipped,
+      notified: notified ?? this.notified,
+    );
+  }
 }
 
 // ─── Shopping Log ─────────────────────────────────────────────────────────────
