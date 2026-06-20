@@ -471,7 +471,7 @@ Terus bijak dalam berbelanja! 🌿
           ),
           const SizedBox(height: 16),
           SizedBox(
-            height: 80,
+            height: 110,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: data.map((d) {

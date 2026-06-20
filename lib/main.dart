@@ -9,29 +9,44 @@ import 'package:google_fonts/google_fonts.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.light));
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown
+  ]);
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ),
+  );
   runApp(const EcoPauseApp());
 }
 
 class EcoPauseApp extends StatelessWidget {
   const EcoPauseApp({super.key});
+  
   @override
-  Widget build(BuildContext context) => MaterialApp(
-    title: 'EcoPause',
-    debugShowCheckedModeBanner: false,
-    theme: AppTheme.theme,
-    home: const _SplashGate(),
-  );
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'EcoPause',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.theme,
+      home: const _SplashGate(),
+    );
+  }
 }
 
 // Checks for existing session — shows Login or Dashboard accordingly
 class _SplashGate extends StatefulWidget {
   const _SplashGate();
-  @override State<_SplashGate> createState() => _SplashGateState();
+  
+  @override
+  State<_SplashGate> createState() => _SplashGateState();
 }
 
 class _SplashGateState extends State<_SplashGate> {
+  final AuthProvider _auth = AuthProvider();
+
   @override
   void initState() {
     super.initState();
@@ -39,28 +54,57 @@ class _SplashGateState extends State<_SplashGate> {
   }
 
   Future<void> _check() async {
-    final auth = AuthProvider();
-    await auth.tryAutoLogin();
+    await _auth.tryAutoLogin();
     if (!mounted) return;
-    if (auth.isLoggedIn) {
-      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => HomeScreen(auth: auth)));
+    
+    if (_auth.isLoggedIn) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => HomeScreen(auth: _auth)),
+      );
     } else {
-      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
     }
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: AppTheme.forest,
-    body: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Container(width: 88, height: 88,
-        decoration: BoxDecoration(color: AppTheme.white.withOpacity(0.15), borderRadius: BorderRadius.circular(24)),
-        child: const Center(child: Text('🌿', style: TextStyle(fontSize: 48)))),
-      const SizedBox(height: 20),
-      Text('EcoPause', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: AppTheme.cream, letterSpacing: 1,
-        fontFamily: 'Nunito', decoration: TextDecoration.none)),
-      const SizedBox(height: 32),
-      const CircularProgressIndicator(color: AppTheme.sage, strokeWidth: 2),
-    ])),
-  );
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.forest,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                color: AppTheme.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: const Center(
+                child: Text('🌿', style: TextStyle(fontSize: 48)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'EcoPause',
+              style: GoogleFonts.nunito(
+                fontSize: 32,
+                fontWeight: FontWeight.w900,
+                color: AppTheme.cream,
+                letterSpacing: 1,
+              ),
+            ),
+            const SizedBox(height: 32),
+            const CircularProgressIndicator(
+              color: AppTheme.sage,
+              strokeWidth: 2,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

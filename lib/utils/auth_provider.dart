@@ -30,17 +30,22 @@ class AuthProvider extends ChangeNotifier {
 
   Future<String?> register(String name, String email, String password) async {
     if (name.trim().isEmpty) return 'Nama tidak boleh kosong';
-    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) return 'Format email tidak valid';
+    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
+      return 'Format email tidak valid';
+    }
     if (password.length < 6) return 'Password minimal 6 karakter';
+    
     final existing = await StorageService.getUserByEmail(email);
     if (existing != null) return 'Email sudah terdaftar';
+    
     final user = AppUser(
       id: 'user_${DateTime.now().millisecondsSinceEpoch}',
-      name: name.trim(), 
+      name: name.trim(),
       email: email.trim(),
       passwordHash: _hashPassword(password),
       createdAt: DateTime.now(),
     );
+    
     await StorageService.registerUser(user);
     _user = user;
     await StorageService.setCurrentUser(user.id);
@@ -54,7 +59,6 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ✅ PERBAIKI: Tambahkan phone dan bio
   Future<void> updateProfile({
     String? name,
     String? email,
@@ -74,14 +78,13 @@ class AuthProvider extends ChangeNotifier {
       phone: phone ?? _user!.phone,
       bio: bio ?? _user!.bio,
     );
-    
+
     await StorageService.updateUser(updated);
     _user = updated;
     notifyListeners();
   }
 
   String _hashPassword(String password) {
-    // Simple hash using dart's built-in — in production use bcrypt
     var hash = 0;
     for (var i = 0; i < password.length; i++) {
       hash = ((hash << 5) - hash + password.codeUnitAt(i)) & 0xFFFFFFFF;

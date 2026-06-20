@@ -14,7 +14,13 @@ import 'login_screen.dart';
 class ProfileScreen extends StatefulWidget {
   final AuthProvider auth;
   final VoidCallback onDataChanged;
-  const ProfileScreen({super.key, required this.auth, required this.onDataChanged});
+  final VoidCallback onProfileImageChanged;
+  const ProfileScreen({
+    super.key, 
+    required this.auth, 
+    required this.onDataChanged, 
+    required this.onProfileImageChanged,
+  });
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -27,6 +33,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _loading = true;
   File? _profileImage;
   final ImagePicker _picker = ImagePicker();
+  bool _isImageLoading = false;
 
   @override
   void initState() {
@@ -38,13 +45,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadProfileImage() async {
     try {
       final imagePath = await StorageService.getProfileImage(widget.auth.user!.id);
+      print('📸 Loading profile image: $imagePath');
+
+      if (!mounted) return;
+
       if (imagePath != null && imagePath.isNotEmpty) {
         final file = File(imagePath);
         if (await file.exists()) {
           setState(() {
             _profileImage = file;
           });
+          print('✅ Profile image loaded');
+        } else {
+          setState(() {
+            _profileImage = null;
+          });
+          print('⚠️ Profile image file not found');
         }
+      } else {
+        setState(() {
+          _profileImage = null;
+        });
+        print('ℹ️ No profile image');
       }
     } catch (e) {
       print('❌ Error loading profile image: $e');
@@ -52,19 +74,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _load() async {
-    final uid = widget.auth.user!.id;
-    final res = await Future.wait([
-      StorageService.loadEvals(uid),
-      StorageService.loadLogs(uid),
-      StorageService.loadNotifications(uid)
-    ]);
-    if (mounted) {
-      setState(() {
-        _evals = res[0] as List<FomoEvaluation>;
-        _logs = res[1] as List<ShoppingLog>;
-        _notifs = res[2] as List<AppNotification>;
-        _loading = false;
-      });
+    try {
+      final uid = widget.auth.user!.id;
+      final res = await Future.wait([
+        StorageService.loadEvals(uid),
+        StorageService.loadLogs(uid),
+        StorageService.loadNotifications(uid)
+      ]);
+      
+      if (mounted) {
+        setState(() {
+          _evals = res[0] as List<FomoEvaluation>;
+          _logs = res[1] as List<ShoppingLog>;
+          _notifs = res[2] as List<AppNotification>;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Error loading data: $e');
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -101,7 +131,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('👤 Profil'),
+        title: const Text('Profil'),
         backgroundColor: AppTheme.forest,
         automaticallyImplyLeading: false,
         leading: IconButton(
@@ -165,7 +195,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Row(
                         children: [
                           GestureDetector(
-                            onTap: () => _showChangePhotoDialog(context),
+                            onTap: _isImageLoading ? null : () => _showChangePhotoDialog(context),
                             child: Container(
                               width: 64,
                               height: 64,
@@ -187,16 +217,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     : null,
                               ),
                               alignment: Alignment.center,
-                              child: _profileImage == null
-                                  ? Text(
-                                      user.name[0].toUpperCase(),
-                                      style: GoogleFonts.nunito(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.w900,
+                              child: _isImageLoading
+                                  ? const SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
                                         color: AppTheme.cream,
+                                        strokeWidth: 2,
                                       ),
                                     )
-                                  : null,
+                                  : _profileImage == null
+                                      ? Text(
+                                          user.name[0].toUpperCase(),
+                                          style: GoogleFonts.nunito(
+                                            fontSize: 28,
+                                            fontWeight: FontWeight.w900,
+                                            color: AppTheme.cream,
+                                          ),
+                                        )
+                                      : null,
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -470,6 +509,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
+    setState(() => _isImageLoading = true);
+
     try {
       final XFile? image = await _picker.pickImage(
         source: source,
@@ -477,33 +518,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
         maxHeight: 512,
         imageQuality: 85,
       );
+      
       if (image != null) {
         final file = File(image.path);
         
-        // Simpan gambar ke storage
         final savedPath = await StorageService.saveProfileImage(
           widget.auth.user!.id,
           file,
         );
         
-        if (savedPath != null) {
-          // Update UI dengan gambar baru
+        if (savedPath != null && mounted) {
           setState(() {
             _profileImage = File(savedPath);
+            _isImageLoading = false;
           });
+
+          widget.onProfileImageChanged();
           
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('✅ Foto profil berhasil diupdate!'),
-                backgroundColor: AppTheme.sage,
-                duration: Duration(seconds: 2),
-              ),
-            );
-          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Foto profil berhasil diupdate!'),
+              backgroundColor: AppTheme.sage,
+              duration: Duration(seconds: 2),
+            ),
+          );
         }
+      } else {
+        setState(() => _isImageLoading = false);
       }
     } catch (e) {
+      setState(() => _isImageLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -516,12 +560,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _removeProfileImage() async {
+    setState(() => _isImageLoading = true);
+
     try {
       await StorageService.removeProfileImage(widget.auth.user!.id);
-      setState(() {
-        _profileImage = null;
-      });
+      
       if (mounted) {
+        setState(() {
+          _profileImage = null;
+          _isImageLoading = false;
+        });
+        
+        widget.onProfileImageChanged();
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('🗑️ Foto profil berhasil dihapus'),
@@ -531,6 +582,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       }
     } catch (e) {
+      setState(() => _isImageLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -643,6 +695,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         onUpdated: () {
           setState(() {});
           widget.onDataChanged();
+          _loadProfileImage();
+          _load();
+        },
+        onChangePhoto: () {
+          _showChangePhotoDialog(context);
         },
       ),
     );
@@ -907,7 +964,12 @@ class _PhotoSourceButton extends StatelessWidget {
 class _EditProfileSheet extends StatefulWidget {
   final AuthProvider auth;
   final VoidCallback onUpdated;
-  const _EditProfileSheet({required this.auth, required this.onUpdated});
+  final VoidCallback onChangePhoto;
+  const _EditProfileSheet({
+    required this.auth, 
+    required this.onUpdated, 
+    required this.onChangePhoto,
+  });
 
   @override
   State<_EditProfileSheet> createState() => _EditProfileSheetState();
@@ -941,7 +1003,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
     super.dispose();
   }
 
-  void _saveProfile() async {
+  void _saveProfile() {
     if (_nameCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Nama tidak boleh kosong!')),
@@ -950,7 +1012,10 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
     }
 
     setState(() => _isLoading = true);
+    _saveProfileAsync();
+  }
 
+  Future<void> _saveProfileAsync() async {
     try {
       await widget.auth.updateProfile(
         name: _nameCtrl.text.trim(),
@@ -1015,7 +1080,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                   children: [
                     Expanded(
                       child: Text(
-                        '✏️ Edit Profil',
+                        'Edit Profil',
                         style: GoogleFonts.nunito(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
@@ -1078,11 +1143,9 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                             child: GestureDetector(
                               onTap: () {
                                 Navigator.pop(context);
-                                // Cari parent state dan panggil showChangePhotoDialog
-                                final parentState = context.findAncestorStateOfType<_ProfileScreenState>();
-                                if (parentState != null) {
-                                  parentState._showChangePhotoDialog(context);
-                                }
+                                Future.delayed(const Duration(milliseconds: 300), () {
+                                  widget.onChangePhoto();
+                                });
                               },
                               child: Container(
                                 padding: const EdgeInsets.all(6),
@@ -1195,12 +1258,8 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                     SizedBox(
                       width: double.infinity,
                       child: EcoButton(
-                        label: _isLoading ? 'Menyimpan...' : '💾 Simpan Perubahan',
-                        onTap: _isLoading
-                            ? null
-                            : () async {
-                                _saveProfile();
-                              },
+                        label: _isLoading ? 'Menyimpan...' : 'Simpan Perubahan',
+                        onTap: _isLoading ? null : _saveProfile,
                         color: AppTheme.sage,
                         icon: _isLoading ? null : Icons.save_outlined,
                       ),
@@ -1263,7 +1322,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
           enabled: enabled,
           maxLines: maxLines,
           keyboardType: keyboardType,
-          style: GoogleFonts.nunito(fontSize: 14),
+          style: GoogleFonts.nunito(fontSize: 14, color: AppTheme.forest),
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: AppTheme.sage),
             hintText: hint,
@@ -1375,7 +1434,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
     return TextField(
       controller: controller,
       obscureText: true,
-      style: GoogleFonts.nunito(fontSize: 14),
+      style: GoogleFonts.nunito(fontSize: 14, color: AppTheme.forest),
       decoration: InputDecoration(
         prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.sage),
         hintText: hint,
@@ -1421,7 +1480,10 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Fitur ubah password segera hadir!')),
+      const SnackBar(
+        content: Text('Fitur ubah password akan segera hadir!'),
+        backgroundColor: AppTheme.sage,
+      ),
     );
     Navigator.pop(context);
   }

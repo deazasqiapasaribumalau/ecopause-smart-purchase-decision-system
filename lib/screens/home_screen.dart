@@ -1,4 +1,5 @@
 // lib/screens/home_screen.dart
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/models.dart';
@@ -20,6 +21,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMixin {
   int _navIndex = 0;
+  File? _profileImage;
 
   void _rebuild() => setState(() {});
 
@@ -32,17 +34,56 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
     });
   }
 
+  Future<void> _loadProfileImage() async {
+    try {
+      final imagePath = await StorageService.getProfileImage(widget.auth.user!.id);
+      if (imagePath != null && imagePath.isNotEmpty) {
+        final file = File(imagePath);
+        if (await file.exists()) {
+          setState(() {
+            _profileImage = file;
+          });
+        }
+      } else {
+        setState(() {
+          _profileImage = null;
+        });
+      }
+    } catch (e) {
+      print('❌ Error loading profile image: $e');
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileImage();
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _loadProfileImage();
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
     
     final pages = [
-      _DashboardPage(auth: widget.auth, onProfileTap: _goToProfile),
+      _DashboardPage(auth: widget.auth, onProfileTap: _goToProfile, profileImage: _profileImage),
       FomoDetectorScreen(auth: widget.auth),
       WishlistScreen(auth: widget.auth),
       JejakBelanjaScreen(auth: widget.auth),
       ReportScreen(auth: widget.auth),
-      ProfileScreen(auth: widget.auth, onDataChanged: _rebuild),
+      ProfileScreen(
+        auth: widget.auth, 
+        onDataChanged: () {
+          _rebuild();
+          _loadProfileImage();
+        },
+        onProfileImageChanged: _loadProfileImage,
+      ),
     ];
 
     return Scaffold(
@@ -74,7 +115,8 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
 class _DashboardPage extends StatefulWidget {
   final AuthProvider auth;
   final VoidCallback onProfileTap;
-  const _DashboardPage({required this.auth, required this.onProfileTap});
+  final File? profileImage;
+  const _DashboardPage({required this.auth, required this.onProfileTap, this.profileImage});
 
   @override
   State<_DashboardPage> createState() => _DashboardPageState();
@@ -202,7 +244,7 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // Avatar yang bisa diklik ke Profile
+                      // Avatar yang bisa diklik ke Profile dengan foto profil
                       GestureDetector(
                         onTap: widget.onProfileTap,
                         child: Container(
@@ -222,17 +264,25 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
                               color: AppTheme.cream.withOpacity(0.25),
                               width: 2,
                             ),
+                            image: widget.profileImage != null
+                                ? DecorationImage(
+                                    image: FileImage(widget.profileImage!),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
                           ),
-                          child: Center(
-                            child: Text(
-                              user.name[0].toUpperCase(),
-                              style: GoogleFonts.nunito(
-                                fontSize: 19,
-                                fontWeight: FontWeight.w900,
-                                color: AppTheme.cream,
-                              ),
-                            ),
-                          ),
+                          child: widget.profileImage == null
+                              ? Center(
+                                  child: Text(
+                                    user.name[0].toUpperCase(),
+                                    style: GoogleFonts.nunito(
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.w900,
+                                      color: AppTheme.cream,
+                                    ),
+                                  ),
+                                )
+                              : null,
                         ),
                       ),
                     ],

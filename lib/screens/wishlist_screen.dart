@@ -200,13 +200,13 @@ class _WishlistScreenState extends State<WishlistScreen> with SingleTickerProvid
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Smart Wishlist'),
+        title: const Text('⏳ Smart Wishlist'),
         backgroundColor: AppTheme.forest,
         automaticallyImplyLeading: false,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.cream),
           onPressed: _goToHome,
-          tooltip: 'Kembali',
+          tooltip: 'Kembali ke Beranda',
         ),
         actions: [
           IconButton(
@@ -285,11 +285,16 @@ class _WishlistScreenState extends State<WishlistScreen> with SingleTickerProvid
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
-            EcoButton(
-              label: 'Kembali ke Beranda',
-              onTap: _goToHome,
-              color: AppTheme.sage,
-              icon: Icons.home_rounded,
+            // Tombol Kembali ke Beranda - UKURAN KECIL
+            Container(
+              width: 220,
+              child: EcoButton(
+                label: 'Kembali ke Beranda',
+                onTap: _goToHome,
+                color: AppTheme.sage,
+                icon: Icons.home_rounded,
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+              ),
             ),
           ],
         ),
