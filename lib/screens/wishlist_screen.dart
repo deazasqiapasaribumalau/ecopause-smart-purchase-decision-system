@@ -1,6 +1,9 @@
 // lib/screens/wishlist_screen.dart
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:uuid/uuid.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/models.dart';
 import '../utils/app_theme.dart';
 import '../utils/auth_provider.dart';
@@ -28,7 +31,7 @@ class _WishlistScreenState extends State<WishlistScreen> with SingleTickerProvid
   
   @override
   void dispose() { 
-    _tab.dispose(); 
+    _tab.dispose();
     super.dispose(); 
   }
 
@@ -97,7 +100,10 @@ class _WishlistScreenState extends State<WishlistScreen> with SingleTickerProvid
             onPressed: () async {
               Navigator.pop(context);
               await StorageService.deleteWishlistItem(item.id);
-              _load();
+              setState(() {
+                _items.removeWhere((i) => i.id == item.id);
+              });
+              await _load();
             },
             child: Text(
               'Hapus',
@@ -148,7 +154,6 @@ class _WishlistScreenState extends State<WishlistScreen> with SingleTickerProvid
             ),
             onPressed: () async {
               Navigator.pop(context);
-              // Reset status item
               item.isBought = false;
               item.isSkipped = false;
               await StorageService.updateWishlistItem(item);
@@ -167,7 +172,21 @@ class _WishlistScreenState extends State<WishlistScreen> with SingleTickerProvid
     );
   }
 
-  // Fungsi untuk kembali ke beranda
+  void _showAddWishlistForm() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => _AddWishlistSheet(
+        auth: widget.auth,
+        onAdded: _load,
+      ),
+    );
+  }
+
   void _goToHome() {
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
@@ -181,13 +200,27 @@ class _WishlistScreenState extends State<WishlistScreen> with SingleTickerProvid
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('⏳ Smart Wishlist'),
+        title: const Text('Smart Wishlist'),
         backgroundColor: AppTheme.forest,
         automaticallyImplyLeading: false,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.cream),
           onPressed: _goToHome,
           tooltip: 'Kembali',
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_rounded, color: AppTheme.cream),
+            onPressed: _showAddWishlistForm,
+            tooltip: 'Tambah Wishlist',
+          ),
+        ],
+        elevation: 0,
+        centerTitle: false,
+        titleTextStyle: GoogleFonts.nunito(
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+          color: AppTheme.cream,
         ),
         bottom: TabBar(
           controller: _tab,
@@ -253,7 +286,7 @@ class _WishlistScreenState extends State<WishlistScreen> with SingleTickerProvid
             ),
             const SizedBox(height: 20),
             EcoButton(
-              label: '🏠 Kembali ke Beranda',
+              label: 'Kembali ke Beranda',
               onTap: _goToHome,
               color: AppTheme.sage,
               icon: Icons.home_rounded,
@@ -283,6 +316,661 @@ class _WishlistScreenState extends State<WishlistScreen> with SingleTickerProvid
   }
 }
 
+// ========== ADD WISHLIST SHEET ==========
+class _AddWishlistSheet extends StatefulWidget {
+  final AuthProvider auth;
+  final VoidCallback onAdded;
+  const _AddWishlistSheet({required this.auth, required this.onAdded});
+
+  @override
+  State<_AddWishlistSheet> createState() => _AddWishlistSheetState();
+}
+
+class _AddWishlistSheetState extends State<_AddWishlistSheet> {
+  final _nameCtrl = TextEditingController();
+  final _priceCtrl = TextEditingController();
+  String _category = productCategories[0];
+  int _coolingDays = 3;
+  File? _selectedImage;
+  final ImagePicker _picker = ImagePicker();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _priceCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      if (image != null) {
+        setState(() {
+          _selectedImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memilih foto: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _takePhoto() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      if (image != null) {
+        setState(() {
+          _selectedImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengambil foto: $e')),
+        );
+      }
+    }
+  }
+
+  void _removeImage() {
+    setState(() {
+      _selectedImage = null;
+    });
+  }
+
+  void _showImagePickerDialog() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Tambah Foto',
+                style: GoogleFonts.nunito(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.forest,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _ImageSourceBtn(
+                    icon: Icons.photo_library,
+                    label: 'Galeri',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickImage();
+                    },
+                  ),
+                  _ImageSourceBtn(
+                    icon: Icons.camera_alt,
+                    label: 'Kamera',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _takePhoto();
+                    },
+                  ),
+                  if (_selectedImage != null)
+                    _ImageSourceBtn(
+                      icon: Icons.delete,
+                      label: 'Hapus',
+                      color: Colors.red,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _removeImage();
+                      },
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _saveWishlist() async {
+    if (_nameCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Masukkan nama barang!')),
+      );
+      return;
+    }
+    if (_priceCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Masukkan harga!')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final item = WishlistItem(
+        id: const Uuid().v4(),
+        userId: widget.auth.user!.id,
+        itemName: _nameCtrl.text.trim(),
+        category: _category,
+        price: double.tryParse(_priceCtrl.text.trim()) ?? 0,
+        imagePath: _selectedImage?.path,
+        addedAt: DateTime.now(),
+        coolingDays: _coolingDays,
+      );
+
+      await StorageService.addToWishlist(item);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Item berhasil ditambahkan ke wishlist!'),
+            backgroundColor: AppTheme.sage,
+          ),
+        );
+        Navigator.pop(context);
+        widget.onAdded();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Gagal menambahkan: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        maxChildSize: 0.92,
+        minChildSize: 0.4,
+        expand: false,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: AppTheme.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              children: [
+                // Handle
+                Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppTheme.divider,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '✏️ Tambah Wishlist',
+                          style: GoogleFonts.nunito(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.forest,
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: AppTheme.bgLight,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.close_rounded,
+                            color: AppTheme.grey,
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Form
+                Expanded(
+                  child: ListView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    children: [
+                      // Nama Barang
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Nama Barang',
+                            style: GoogleFonts.nunito(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.ink,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: _nameCtrl,
+                            style: GoogleFonts.nunito(fontSize: 14, color: AppTheme.forest),
+                            decoration: InputDecoration(
+                              hintText: 'Masukkan nama barang',
+                              hintStyle: GoogleFonts.nunito(
+                                fontSize: 14,
+                                color: AppTheme.grey.withOpacity(0.5),
+                              ),
+                              prefixIcon: Icon(Icons.shopping_bag_outlined, color: AppTheme.sage, size: 20),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: AppTheme.divider),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: AppTheme.divider),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: AppTheme.sage, width: 2),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              filled: true,
+                              fillColor: AppTheme.bgLight,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      // Harga
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Harga (Rp)',
+                            style: GoogleFonts.nunito(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.ink,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: _priceCtrl,
+                            keyboardType: TextInputType.number,
+                            style: GoogleFonts.nunito(fontSize: 14, color: AppTheme.forest),
+                            decoration: InputDecoration(
+                              hintText: 'Masukkan harga',
+                              hintStyle: GoogleFonts.nunito(
+                                fontSize: 14,
+                                color: AppTheme.grey.withOpacity(0.5),
+                              ),
+                              prefixIcon: Icon(Icons.payments_outlined, color: AppTheme.sage, size: 20),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: AppTheme.divider),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: AppTheme.divider),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: AppTheme.sage, width: 2),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              filled: true,
+                              fillColor: AppTheme.bgLight,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      // Kategori
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Kategori',
+                            style: GoogleFonts.nunito(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.ink,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          DropdownButtonFormField<String>(
+                            value: _category,
+                            style: GoogleFonts.nunito(fontSize: 14, color: AppTheme.forest),
+                            decoration: InputDecoration(
+                              prefixIcon: Icon(Icons.category_outlined, color: AppTheme.sage, size: 20),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: AppTheme.divider),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: AppTheme.divider),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: AppTheme.sage, width: 2),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              filled: true,
+                              fillColor: AppTheme.bgLight,
+                            ),
+                            items: productCategories.map((c) {
+                              return DropdownMenuItem(
+                                value: c,
+                                child: Text(
+                                  c,
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 13,
+                                    color: AppTheme.forest,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (v) => setState(() => _category = v!),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      // Cooling Period
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Cooling Period',
+                            style: GoogleFonts.nunito(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.ink,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [1, 3, 7].map((days) {
+                              final isSelected = _coolingDays == days;
+                              return Expanded(
+                                child: GestureDetector(
+                                  onTap: () => setState(() => _coolingDays = days),
+                                  child: Container(
+                                    margin: const EdgeInsets.only(right: 8),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? AppTheme.sage : AppTheme.bgLight,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: isSelected ? AppTheme.sage : AppTheme.divider,
+                                        width: isSelected ? 2 : 1.5,
+                                      ),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      '$days hari',
+                                      style: GoogleFonts.nunito(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: isSelected ? AppTheme.white : AppTheme.ink,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      // Foto
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Foto (Opsional)',
+                            style: GoogleFonts.nunito(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.ink,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          GestureDetector(
+                            onTap: _showImagePickerDialog,
+                            child: Container(
+                              height: 100,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: AppTheme.bgLight,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppTheme.divider, width: 1.5),
+                              ),
+                              child: _selectedImage != null
+                                  ? Stack(
+                                      fit: StackFit.expand,
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(12),
+                                          child: Image.file(
+                                            _selectedImage!,
+                                            width: double.infinity,
+                                            height: 100,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                        Positioned(
+                                          top: 8,
+                                          right: 8,
+                                          child: GestureDetector(
+                                            onTap: _removeImage,
+                                            child: Container(
+                                              padding: const EdgeInsets.all(6),
+                                              decoration: const BoxDecoration(
+                                                color: Colors.black54,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(
+                                                Icons.close_rounded,
+                                                color: Colors.white,
+                                                size: 18,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.add_photo_alternate_outlined,
+                                          size: 32,
+                                          color: AppTheme.grey.withOpacity(0.6),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Tap untuk tambah foto',
+                                          style: GoogleFonts.nunito(
+                                            fontSize: 12,
+                                            color: AppTheme.grey.withOpacity(0.6),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      // Buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: _isLoading ? null : () => Navigator.pop(context),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: AppTheme.grey, width: 1.5),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'Batal',
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.grey,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: _isLoading ? null : _saveWishlist,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      AppTheme.sage,
+                                      AppTheme.forestMid,
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                alignment: Alignment.center,
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(
+                                            Icons.add_rounded,
+                                            color: Colors.white,
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Tambah',
+                                            style: GoogleFonts.nunito(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w800,
+                                              color: AppTheme.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ========== IMAGE SOURCE BUTTON ==========
+class _ImageSourceBtn extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color? color;
+
+  const _ImageSourceBtn({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: (color ?? AppTheme.sage).withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              size: 32,
+              color: color ?? AppTheme.sage,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: GoogleFonts.nunito(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: color ?? AppTheme.ink,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ========== WISHLIST CARD ==========
 class _WishlistCard extends StatelessWidget {
   final WishlistItem item; 
   final String type; 
@@ -307,6 +995,40 @@ class _WishlistCard extends StatelessWidget {
     if (p >= 1e6) return '${(p/1e6).toStringAsFixed(1)} jt'; 
     if (p >= 1000) return '${(p/1000).toStringAsFixed(0)} rb'; 
     return p.toStringAsFixed(0); 
+  }
+
+  Widget _buildImageWidget(String imagePath) {
+    if (imagePath.startsWith('http')) {
+      return Image.network(
+        imagePath,
+        width: 60,
+        height: 60,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Container(
+          color: AppTheme.bgLight,
+          child: const Icon(Icons.image_not_supported, size: 24, color: AppTheme.grey),
+        ),
+      );
+    }
+    
+    final file = File(imagePath);
+    if (file.existsSync()) {
+      return Image.file(
+        file,
+        width: 60,
+        height: 60,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Container(
+          color: AppTheme.bgLight,
+          child: const Icon(Icons.image_not_supported, size: 24, color: AppTheme.grey),
+        ),
+      );
+    }
+    
+    return Container(
+      color: AppTheme.bgLight,
+      child: const Icon(Icons.image_not_supported, size: 24, color: AppTheme.grey),
+    );
   }
 
   @override
@@ -342,6 +1064,21 @@ class _WishlistCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (item.imagePath != null && item.imagePath!.isNotEmpty) ...[
+                Container(
+                  width: 60,
+                  height: 60,
+                  margin: const EdgeInsets.only(right: 12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppTheme.divider, width: 1),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: _buildImageWidget(item.imagePath!),
+                  ),
+                ),
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -382,7 +1119,6 @@ class _WishlistCard extends StatelessWidget {
                   ],
                 ),
               ),
-              // Tombol hapus (selalu muncul)
               IconButton(
                 icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.terra, size: 20),
                 onPressed: onDelete,
@@ -557,7 +1293,6 @@ class _WishlistCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Tombol untuk mengubah status (kembali ke pending)
                   GestureDetector(
                     onTap: onReset,
                     child: Container(

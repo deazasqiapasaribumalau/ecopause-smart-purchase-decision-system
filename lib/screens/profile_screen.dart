@@ -1,11 +1,14 @@
 // lib/screens/profile_screen.dart
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/models.dart';
 import '../utils/app_theme.dart';
 import '../utils/auth_provider.dart';
 import '../utils/storage_service.dart';
 import '../widgets/common_widgets.dart';
+import 'home_screen.dart';
 import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -22,11 +25,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<ShoppingLog> _logs = [];
   List<AppNotification> _notifs = [];
   bool _loading = true;
+  File? _profileImage;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadProfileImage();
+  }
+
+  Future<void> _loadProfileImage() async {
+    try {
+      final imagePath = await StorageService.getProfileImage(widget.auth.user!.id);
+      if (imagePath != null && imagePath.isNotEmpty) {
+        final file = File(imagePath);
+        if (await file.exists()) {
+          setState(() {
+            _profileImage = file;
+          });
+        }
+      }
+    } catch (e) {
+      print('❌ Error loading profile image: $e');
+    }
   }
 
   Future<void> _load() async {
@@ -62,6 +84,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String _fmtDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
 
+  void _goToHome() {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => HomeScreen(auth: widget.auth),
+      ),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = widget.auth.user!;
@@ -73,12 +104,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('👤 Profil'),
         backgroundColor: AppTheme.forest,
         automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.cream),
+          onPressed: _goToHome,
+          tooltip: 'Kembali ke Beranda',
+        ),
+        elevation: 0,
+        centerTitle: false,
+        titleTextStyle: GoogleFonts.nunito(
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+          color: AppTheme.cream,
+        ),
         actions: [
           Stack(
             alignment: Alignment.topRight,
             children: [
               IconButton(
-                icon: const Icon(Icons.notifications_outlined),
+                icon: const Icon(Icons.notifications_outlined, color: AppTheme.cream),
                 onPressed: () => _showNotifications(context),
               ),
               if (unread > 0)
@@ -121,28 +164,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     EcoCard(
                       child: Row(
                         children: [
-                          Container(
-                            width: 64,
-                            height: 64,
-                            decoration: BoxDecoration(
-                              color: AppTheme.forest,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppTheme.forest.withOpacity(0.3),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              user.name[0].toUpperCase(),
-                              style: GoogleFonts.nunito(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w900,
-                                color: AppTheme.cream,
+                          GestureDetector(
+                            onTap: () => _showChangePhotoDialog(context),
+                            child: Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: AppTheme.forest,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppTheme.forest.withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                                image: _profileImage != null
+                                    ? DecorationImage(
+                                        image: FileImage(_profileImage!),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null,
                               ),
+                              alignment: Alignment.center,
+                              child: _profileImage == null
+                                  ? Text(
+                                      user.name[0].toUpperCase(),
+                                      style: GoogleFonts.nunito(
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.w900,
+                                        color: AppTheme.cream,
+                                      ),
+                                    )
+                                  : null,
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -312,8 +366,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               value: notifEnabled,
                               activeColor: AppTheme.sage,
                               onChanged: (v) async {
-                                widget.auth.updateProfile(
-                                  notificationsEnabled: v, email: '', phone: '', bio: '', name: '',
+                                await widget.auth.updateProfile(
+                                  notificationsEnabled: v,
                                 );
                                 setState(() {});
                               },
@@ -354,6 +408,138 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
     );
+  }
+
+  void _showChangePhotoDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Foto Profil',
+                style: GoogleFonts.nunito(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.forest,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _PhotoSourceButton(
+                    icon: Icons.photo_library,
+                    label: 'Galeri',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickImage(ImageSource.gallery);
+                    },
+                  ),
+                  _PhotoSourceButton(
+                    icon: Icons.camera_alt,
+                    label: 'Kamera',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickImage(ImageSource.camera);
+                    },
+                  ),
+                  if (_profileImage != null)
+                    _PhotoSourceButton(
+                      icon: Icons.delete,
+                      label: 'Hapus',
+                      color: Colors.red,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _removeProfileImage();
+                      },
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+      if (image != null) {
+        final file = File(image.path);
+        
+        // Simpan gambar ke storage
+        final savedPath = await StorageService.saveProfileImage(
+          widget.auth.user!.id,
+          file,
+        );
+        
+        if (savedPath != null) {
+          // Update UI dengan gambar baru
+          setState(() {
+            _profileImage = File(savedPath);
+          });
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✅ Foto profil berhasil diupdate!'),
+                backgroundColor: AppTheme.sage,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Gagal mengupload foto: $e'),
+            backgroundColor: AppTheme.terra,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _removeProfileImage() async {
+    try {
+      await StorageService.removeProfileImage(widget.auth.user!.id);
+      setState(() {
+        _profileImage = null;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🗑️ Foto profil berhasil dihapus'),
+            backgroundColor: AppTheme.terra,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Gagal menghapus foto: $e'),
+            backgroundColor: AppTheme.terra,
+          ),
+        );
+      }
+    }
   }
 
   Widget _miniStatCard(String val, String label, String emoji, Color color) {
@@ -670,6 +856,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
+// ========== PHOTO SOURCE BUTTON ==========
+class _PhotoSourceButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color? color;
+
+  const _PhotoSourceButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: (color ?? AppTheme.sage).withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              size: 32,
+              color: color ?? AppTheme.sage,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: GoogleFonts.nunito(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: color ?? AppTheme.ink,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ─── Edit Profile Sheet ────────────────────────────────────────────────────────
 class _EditProfileSheet extends StatefulWidget {
   final AuthProvider auth;
@@ -722,14 +955,17 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
       await widget.auth.updateProfile(
         name: _nameCtrl.text.trim(),
         email: _emailCtrl.text.trim(),
-        phone: _phoneCtrl.text.trim(),
-        bio: _bioCtrl.text.trim(),
+        phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
+        bio: _bioCtrl.text.trim().isEmpty ? null : _bioCtrl.text.trim(),
         notificationsEnabled: _notificationsEnabled,
       );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Profil berhasil diperbarui!')),
+          const SnackBar(
+            content: Text('✅ Profil berhasil diperbarui!'),
+            backgroundColor: AppTheme.sage,
+          ),
         );
         Navigator.pop(context);
         widget.onUpdated();
@@ -737,7 +973,10 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal memperbarui profil: $e')),
+          SnackBar(
+            content: Text('❌ Gagal memperbarui profil: $e'),
+            backgroundColor: AppTheme.terra,
+          ),
         );
       }
     } finally {
@@ -838,11 +1077,12 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                             right: 0,
                             child: GestureDetector(
                               onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Fitur ganti foto profil segera hadir!'),
-                                  ),
-                                );
+                                Navigator.pop(context);
+                                // Cari parent state dan panggil showChangePhotoDialog
+                                final parentState = context.findAncestorStateOfType<_ProfileScreenState>();
+                                if (parentState != null) {
+                                  parentState._showChangePhotoDialog(context);
+                                }
                               },
                               child: Container(
                                 padding: const EdgeInsets.all(6),
@@ -955,7 +1195,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                     SizedBox(
                       width: double.infinity,
                       child: EcoButton(
-                        label: _isLoading ? 'Menyimpan...' : 'Simpan Perubahan',
+                        label: _isLoading ? 'Menyimpan...' : '💾 Simpan Perubahan',
                         onTap: _isLoading
                             ? null
                             : () async {
@@ -1180,7 +1420,6 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
       return;
     }
 
-    // TODO: Implement actual password change
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Fitur ubah password segera hadir!')),
     );

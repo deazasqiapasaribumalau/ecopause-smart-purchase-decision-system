@@ -10,6 +10,7 @@ import '../utils/auth_provider.dart';
 import '../utils/storage_service.dart';
 import '../widgets/common_widgets.dart';
 import 'fomo_result_screen.dart';
+import 'home_screen.dart';
 
 class FomoDetectorScreen extends StatefulWidget {
   final AuthProvider auth;
@@ -66,6 +67,15 @@ class _FomoDetectorScreenState extends State<FomoDetectorScreen> with AutomaticK
     _nameCtrl.dispose();
     _priceCtrl.dispose();
     super.dispose();
+  }
+
+  void _goToHome() {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => HomeScreen(auth: widget.auth),
+      ),
+      (route) => false,
+    );
   }
 
   // Reset semua state ke awal
@@ -233,10 +243,7 @@ class _FomoDetectorScreenState extends State<FomoDetectorScreen> with AutomaticK
     await StorageService.saveEval(eval);
 
     if (mounted) {
-      // Reset state sebelum navigasi ke hasil
       _resetToInitialState();
-
-      // Navigasi ke hasil dengan pushReplacement agar tidak bisa kembali ke pertanyaan
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => FomoResultScreen(eval: eval, auth: widget.auth),
@@ -251,10 +258,21 @@ class _FomoDetectorScreenState extends State<FomoDetectorScreen> with AutomaticK
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('🔍 FOMO Detector'),
+        title: const Text('FOMO Detector'),
         backgroundColor: AppTheme.forest,
         automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.cream),
+          onPressed: _goToHome,
+          tooltip: 'Kembali ke Beranda',
+        ),
         elevation: 0,
+        centerTitle: false,
+        titleTextStyle: GoogleFonts.nunito(
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+          color: AppTheme.cream,
+        ),
       ),
       body: _step == 0 ? _buildInfoStep() : _buildQuestionStep(),
     );
@@ -327,7 +345,6 @@ class _FomoDetectorScreenState extends State<FomoDetectorScreen> with AutomaticK
                   }).toList(),
                   onChanged: (v) => setState(() => _category = v!),
                 ),
-                // Tambahan untuk Foto
                 const SizedBox(height: 20),
                 _fieldLabel('Foto Barang (Opsional)'),
                 const SizedBox(height: 8),
@@ -364,43 +381,19 @@ class _FomoDetectorScreenState extends State<FomoDetectorScreen> with AutomaticK
     );
   }
 
-  // Widget untuk bagian foto
   Widget _buildImageSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (_selectedImage != null) ...[
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(
-                  _selectedImage!,
-                  height: 150,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: GestureDetector(
-                  onTap: _removeImage,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.6),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.close,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.file(
+              _selectedImage!,
+              height: 200,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
           ),
           const SizedBox(height: 10),
           Row(
@@ -423,13 +416,32 @@ class _FomoDetectorScreenState extends State<FomoDetectorScreen> with AutomaticK
                   ),
                 ),
               ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _removeImage,
+                  icon: const Icon(Icons.delete_outline),
+                  label: Text(
+                    'Hapus Foto',
+                    style: GoogleFonts.nunito(fontSize: 14),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.terra,
+                    side: const BorderSide(color: AppTheme.terra),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ] else ...[
           GestureDetector(
             onTap: _showImagePickerDialog,
             child: Container(
-              height: 120,
+              height: 150,
               width: double.infinity,
               decoration: BoxDecoration(
                 color: AppTheme.bgLight,
@@ -441,7 +453,7 @@ class _FomoDetectorScreenState extends State<FomoDetectorScreen> with AutomaticK
                 children: [
                   Icon(
                     Icons.add_photo_alternate_outlined,
-                    size: 40,
+                    size: 48,
                     color: AppTheme.grey.withOpacity(0.6),
                   ),
                   const SizedBox(height: 8),
@@ -482,6 +494,7 @@ class _FomoDetectorScreenState extends State<FomoDetectorScreen> with AutomaticK
   Widget _buildQuestionStep() {
     final keys = _questions.keys.toList();
     final answered = _answers.values.where((v) => v != null).length;
+    final progress = answered / _questions.length;
 
     return Column(
       children: [
@@ -494,31 +507,52 @@ class _FomoDetectorScreenState extends State<FomoDetectorScreen> with AutomaticK
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
-                    child: Text(
-                      _nameCtrl.text.trim(),
-                      style: GoogleFonts.nunito(
-                        fontSize: 13,
-                        color: AppTheme.mint,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Evaluasi: ${_nameCtrl.text.trim()}',
+                          style: GoogleFonts.nunito(
+                            fontSize: 13,
+                            color: AppTheme.mint,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Progress $answered dari ${_questions.length}',
+                          style: GoogleFonts.nunito(
+                            fontSize: 11,
+                            color: AppTheme.cream.withOpacity(0.7),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Text(
-                    '$answered / ${_questions.length}',
-                    style: GoogleFonts.nunito(
-                      fontSize: 13,
-                      color: AppTheme.cream.withOpacity(0.7),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppTheme.cream.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${(progress * 100).round()}%',
+                      style: GoogleFonts.nunito(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.cream,
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               ClipRRect(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(6),
                 child: LinearProgressIndicator(
-                  value: answered / _questions.length,
-                  minHeight: 6,
+                  value: progress,
+                  minHeight: 8,
                   backgroundColor: AppTheme.forestMid.withOpacity(0.3),
                   valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.sage),
                 ),
@@ -536,10 +570,11 @@ class _FomoDetectorScreenState extends State<FomoDetectorScreen> with AutomaticK
                   padding: const EdgeInsets.only(top: 8, bottom: 24),
                   child: EcoButton(
                     label: _allAnswered
-                        ? 'Lihat Hasil Evaluasi ✨'
+                        ? 'Lihat Hasil Evaluasi'
                         : 'Jawab semua pertanyaan dulu',
                     onTap: _allAnswered ? _submit : null,
                     color: _allAnswered ? AppTheme.sage : AppTheme.grey,
+                    icon: _allAnswered ? Icons.analytics_rounded : null,
                   ),
                 );
               }
@@ -628,12 +663,14 @@ class _QuestionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: answer != null ? AppTheme.sage.withOpacity(0.5) : AppTheme.divider,
-          width: 1.5,
+          width: answer != null ? 2 : 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.sage.withOpacity(0.06),
-            blurRadius: 8,
+            color: answer != null 
+                ? AppTheme.sage.withOpacity(0.1) 
+                : AppTheme.sage.withOpacity(0.04),
+            blurRadius: answer != null ? 12 : 8,
             offset: const Offset(0, 3),
           )
         ],
@@ -645,23 +682,27 @@ class _QuestionCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 26,
-                height: 26,
+                width: 30,
+                height: 30,
                 decoration: BoxDecoration(
                   color: answer != null ? AppTheme.sage : AppTheme.bgLight,
                   shape: BoxShape.circle,
+                  border: Border.all(
+                    color: answer != null ? AppTheme.sage : AppTheme.divider,
+                    width: 2,
+                  ),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   '$number',
                   style: GoogleFonts.nunito(
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w800,
                     color: answer != null ? AppTheme.white : AppTheme.ink,
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   question,
@@ -673,6 +714,21 @@ class _QuestionCard extends StatelessWidget {
                   ),
                 ),
               ),
+              if (answer != null)
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: answer == true 
+                        ? AppTheme.sage.withOpacity(0.1) 
+                        : AppTheme.terra.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    answer == true ? Icons.check_rounded : Icons.close_rounded,
+                    color: answer == true ? AppTheme.sage : AppTheme.terra,
+                    size: 16,
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 14),
@@ -680,7 +736,7 @@ class _QuestionCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _AnswerBtn(
-                  label: 'Ya ✓',
+                  label: 'Ya',
                   selected: answer == true,
                   color: AppTheme.sage,
                   onTap: () => onAnswer(true),
@@ -689,7 +745,7 @@ class _QuestionCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: _AnswerBtn(
-                  label: 'Tidak ✗',
+                  label: 'Tidak',
                   selected: answer == false,
                   color: AppTheme.terra,
                   onTap: () => onAnswer(false),
@@ -721,8 +777,8 @@ class _AnswerBtn extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: selected ? color.withOpacity(0.12) : AppTheme.bgLight,
           borderRadius: BorderRadius.circular(10),
@@ -732,13 +788,25 @@ class _AnswerBtn extends StatelessWidget {
           ),
         ),
         alignment: Alignment.center,
-        child: Text(
-          label,
-          style: GoogleFonts.nunito(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: selected ? color : AppTheme.grey,
-          ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (selected)
+              Icon(
+                label == 'Ya' ? Icons.check_rounded : Icons.close_rounded,
+                color: color,
+                size: 16,
+              ),
+            if (selected) const SizedBox(width: 4),
+            Text(
+              label,
+              style: GoogleFonts.nunito(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: selected ? color : AppTheme.grey,
+              ),
+            ),
+          ],
         ),
       ),
     );

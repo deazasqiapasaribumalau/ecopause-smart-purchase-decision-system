@@ -1,5 +1,7 @@
 // lib/utils/storage_service.dart
 import 'dart:convert';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 
@@ -10,6 +12,7 @@ class StorageService {
   static const _wishlistKey   = 'wishlist';
   static const _logsKey       = 'shopping_logs';
   static const _notifKey      = 'notifications';
+  static const _profileImageKey = 'profile_image_';
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   static Future<List<AppUser>> _loadUsers() async {
@@ -42,7 +45,10 @@ class StorageService {
   static Future<void> updateUser(AppUser updated) async {
     final users = await _loadUsers();
     final idx = users.indexWhere((u) => u.id == updated.id);
-    if (idx != -1) { users[idx] = updated; await _saveUsers(users); }
+    if (idx != -1) { 
+      users[idx] = updated; 
+      await _saveUsers(users); 
+    }
   }
 
   static Future<void> setCurrentUser(String uid) async {
@@ -55,12 +61,104 @@ class StorageService {
     final uid = p.getString(_currentUidKey);
     if (uid == null) return null;
     final users = await _loadUsers();
-    try { return users.firstWhere((u) => u.id == uid); } catch (_) { return null; }
+    try { 
+      return users.firstWhere((u) => u.id == uid); 
+    } catch (_) { 
+      return null; 
+    }
   }
 
   static Future<void> logout() async {
     final p = await SharedPreferences.getInstance();
     await p.remove(_currentUidKey);
+  }
+
+  static Future<void> saveUser(AppUser user) async {
+    final users = await _loadUsers();
+    final idx = users.indexWhere((u) => u.id == user.id);
+    if (idx != -1) {
+      users[idx] = user;
+    } else {
+      users.add(user);
+    }
+    await _saveUsers(users);
+  }
+
+  // ── Profile Image ─────────────────────────────────────────────────────────
+  static Future<String?> getProfileImage(String userId) async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      return p.getString('$_profileImageKey$userId');
+    } catch (e) {
+      print('❌ Gagal get profile image: $e');
+      return null;
+    }
+  }
+
+  static Future<String?> saveProfileImage(String userId, File image) async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      
+      // Dapatkan direktori aplikasi
+      final appDir = await getApplicationDocumentsDirectory();
+      final imagesDir = Directory('${appDir.path}/profile_images');
+      
+      // Buat folder jika belum ada
+      if (!await imagesDir.exists()) {
+        await imagesDir.create(recursive: true);
+      }
+      
+      // Hapus gambar lama jika ada
+      final oldPath = p.getString('$_profileImageKey$userId');
+      if (oldPath != null && oldPath.isNotEmpty) {
+        try {
+          final oldFile = File(oldPath);
+          if (await oldFile.exists()) {
+            await oldFile.delete();
+          }
+        } catch (e) {
+          print('⚠️ Gagal hapus gambar lama: $e');
+        }
+      }
+      
+      // Simpan gambar baru
+      final fileName = 'profile_${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final savedPath = '${imagesDir.path}/$fileName';
+      final savedImage = await image.copy(savedPath);
+      
+      // Simpan path ke SharedPreferences
+      await p.setString('$_profileImageKey$userId', savedImage.path);
+      print('✅ Profile image saved: ${savedImage.path}');
+      return savedImage.path;
+    } catch (e) {
+      print('❌ Gagal save profile image: $e');
+      return null;
+    }
+  }
+
+  static Future<void> removeProfileImage(String userId) async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final path = p.getString('$_profileImageKey$userId');
+      
+      // Hapus file
+      if (path != null && path.isNotEmpty) {
+        try {
+          final file = File(path);
+          if (await file.exists()) {
+            await file.delete();
+            print('✅ Profile image deleted: $path');
+          }
+        } catch (e) {
+          print('⚠️ Gagal hapus file profile image: $e');
+        }
+      }
+      
+      // Hapus dari SharedPreferences
+      await p.remove('$_profileImageKey$userId');
+    } catch (e) {
+      print('❌ Gagal remove profile image: $e');
+    }
   }
 
   // ── FOMO Evaluations ──────────────────────────────────────────────────────
@@ -115,7 +213,31 @@ class StorageService {
     final raw = p.getStringList(_wishlistKey) ?? [];
     final all = raw.map((e) => WishlistItem.fromJson(jsonDecode(e))).toList();
     final idx = all.indexWhere((i) => i.id == updated.id);
-    if (idx != -1) { all[idx] = updated; await _saveAllWishlist(all); }
+    if (idx != -1) { 
+      all[idx] = updated; 
+      await _saveAllWishlist(all); 
+    }
+  }
+
+  static Future<void> deleteWishlistItem(String itemId) async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final raw = p.getStringList(_wishlistKey) ?? [];
+      final all = raw.map((e) => WishlistItem.fromJson(jsonDecode(e))).toList();
+      
+      final beforeCount = all.length;
+      all.removeWhere((item) => item.id == itemId);
+      
+      if (all.length < beforeCount) {
+        await _saveAllWishlist(all);
+        print('✅ Item berhasil dihapus: $itemId');
+      } else {
+        print('⚠️ Item tidak ditemukan: $itemId');
+      }
+    } catch (e) {
+      print('❌ Gagal menghapus item: $e');
+      rethrow;
+    }
   }
 
   // ── Shopping Logs ─────────────────────────────────────────────────────────
@@ -133,6 +255,51 @@ class StorageService {
     final list = p.getStringList(_logsKey) ?? [];
     list.add(jsonEncode(log.toJson()));
     await p.setStringList(_logsKey, list);
+  }
+
+  static Future<void> saveLog(ShoppingLog log) async {
+    await addLog(log);
+  }
+
+  static Future<void> updateLog(ShoppingLog updatedLog) async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final raw = p.getStringList(_logsKey) ?? [];
+      final all = raw.map((e) => ShoppingLog.fromJson(jsonDecode(e))).toList();
+      final idx = all.indexWhere((l) => l.id == updatedLog.id);
+      
+      if (idx != -1) {
+        all[idx] = updatedLog;
+        await p.setStringList(_logsKey, all.map((e) => jsonEncode(e.toJson())).toList());
+        print('✅ Log berhasil diupdate: ${updatedLog.id}');
+      } else {
+        print('⚠️ Log tidak ditemukan: ${updatedLog.id}');
+      }
+    } catch (e) {
+      print('❌ Gagal mengupdate log: $e');
+      rethrow;
+    }
+  }
+
+  static Future<void> deleteLog(String logId) async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final raw = p.getStringList(_logsKey) ?? [];
+      final all = raw.map((e) => ShoppingLog.fromJson(jsonDecode(e))).toList();
+      
+      final beforeCount = all.length;
+      all.removeWhere((l) => l.id == logId);
+      
+      if (all.length < beforeCount) {
+        await p.setStringList(_logsKey, all.map((e) => jsonEncode(e.toJson())).toList());
+        print('✅ Log berhasil dihapus: $logId');
+      } else {
+        print('⚠️ Log tidak ditemukan: $logId');
+      }
+    } catch (e) {
+      print('❌ Gagal menghapus log: $e');
+      rethrow;
+    }
   }
 
   // ── Notifications ─────────────────────────────────────────────────────────
@@ -157,7 +324,9 @@ class StorageService {
     final p = await SharedPreferences.getInstance();
     final raw = p.getStringList(_notifKey) ?? [];
     final all = raw.map((e) => AppNotification.fromJson(jsonDecode(e))).toList();
-    for (final n in all) { if (n.id == notifId) n.isRead = true; }
+    for (final n in all) { 
+      if (n.id == notifId) n.isRead = true; 
+    }
     await p.setStringList(_notifKey, all.map((e) => jsonEncode(e.toJson())).toList());
   }
 
@@ -178,8 +347,4 @@ class StorageService {
       }
     }
   }
-
-  static Future<void> saveLog(ShoppingLog log) async {}
-
-  static Future<void> deleteWishlistItem(String id) async {}
 }

@@ -36,7 +36,8 @@ class AuthProvider extends ChangeNotifier {
     if (existing != null) return 'Email sudah terdaftar';
     final user = AppUser(
       id: 'user_${DateTime.now().millisecondsSinceEpoch}',
-      name: name.trim(), email: email.trim(),
+      name: name.trim(), 
+      email: email.trim(),
       passwordHash: _hashPassword(password),
       createdAt: DateTime.now(),
     );
@@ -53,14 +54,27 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateProfile({String? name, bool? notificationsEnabled, required String email, required String phone, required String bio}) async {
+  // ✅ PERBAIKI: Tambahkan phone dan bio
+  Future<void> updateProfile({
+    String? name,
+    String? email,
+    String? phone,
+    String? bio,
+    bool? notificationsEnabled,
+  }) async {
     if (_user == null) return;
+
     final updated = AppUser(
-      id: _user!.id, name: name ?? _user!.name,
-      email: _user!.email, passwordHash: _user!.passwordHash,
+      id: _user!.id,
+      name: name ?? _user!.name,
+      email: email ?? _user!.email,
+      passwordHash: _user!.passwordHash,
       createdAt: _user!.createdAt,
       notificationsEnabled: notificationsEnabled ?? _user!.notificationsEnabled,
+      phone: phone ?? _user!.phone,
+      bio: bio ?? _user!.bio,
     );
+    
     await StorageService.updateUser(updated);
     _user = updated;
     notifyListeners();

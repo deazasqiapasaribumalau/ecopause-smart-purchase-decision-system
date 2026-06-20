@@ -26,12 +26,18 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   @override
   bool get wantKeepAlive => true;
 
+  void _goToProfile() {
+    setState(() {
+      _navIndex = 5;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
     
     final pages = [
-      _DashboardPage(auth: widget.auth),
+      _DashboardPage(auth: widget.auth, onProfileTap: _goToProfile),
       FomoDetectorScreen(auth: widget.auth),
       WishlistScreen(auth: widget.auth),
       JejakBelanjaScreen(auth: widget.auth),
@@ -67,7 +73,8 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
 // ─── Dashboard Page ───────────────────────────────────────────────────────────
 class _DashboardPage extends StatefulWidget {
   final AuthProvider auth;
-  const _DashboardPage({required this.auth});
+  final VoidCallback onProfileTap;
+  const _DashboardPage({required this.auth, required this.onProfileTap});
 
   @override
   State<_DashboardPage> createState() => _DashboardPageState();
@@ -113,7 +120,7 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
   }
 
   int get _skippedCount => _evals.where((e) => e.decision == 'skip').length;
-  double get _savedMoney => _evals.where((e) => e.decision == 'skip').fold(0.0, (s, e) => s + e.price);
+  double get _totalSpent => _evals.fold(0.0, (s, e) => s + e.price);
   int get _wishlistPending => _wishlist.where((w) => w.isPending).length;
   int get _unlockedCount => _wishlist.where((w) => w.isPending && w.isUnlocked).length;
   double get _totalWaste => _logs.fold(0.0, (s, l) => s + l.wasteKg);
@@ -136,76 +143,71 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
             parent: AlwaysScrollableScrollPhysics(),
           ),
           slivers: [
-            // Header dengan gradient - OPTIMIZED
+            // Header dengan gradient
             SliverAppBar(
-              expandedHeight: 110,
+              expandedHeight: 115,
               pinned: true,
               backgroundColor: AppTheme.forest,
-              flexibleSpace: ClipRect(
-                child: FlexibleSpaceBar(
-                  background: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          AppTheme.forest,
-                          AppTheme.forestMid,
-                        ],
-                      ),
+              elevation: 0,
+              flexibleSpace: FlexibleSpaceBar(
+                background: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppTheme.forest,
+                        AppTheme.forestMid,
+                      ],
                     ),
-                    padding: const EdgeInsets.fromLTRB(20, 36, 20, 6),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text(
-                                '$greeting,',
-                                style: GoogleFonts.nunito(
-                                  fontSize: 10,
-                                  color: AppTheme.mint,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.0,
-                                ),
+                  ),
+                  padding: const EdgeInsets.fromLTRB(20, 42, 20, 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '$greeting,',
+                              style: GoogleFonts.nunito(
+                                fontSize: 13,
+                                color: AppTheme.mint,
+                                fontWeight: FontWeight.w600,
                               ),
-                              Text(
-                                user.name,
-                                style: GoogleFonts.nunito(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppTheme.cream,
-                                  height: 1.0,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              user.name,
+                              style: GoogleFonts.nunito(
+                                fontSize: 21,
+                                fontWeight: FontWeight.w900,
+                                color: AppTheme.cream,
                               ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.cream.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  '🌿 Belanja bijak',
-                                  style: GoogleFonts.nunito(
-                                    fontSize: 8,
-                                    color: AppTheme.cream.withOpacity(0.7),
-                                    fontWeight: FontWeight.w500,
-                                    height: 1.0,
-                                  ),
-                                ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '🌿 Belanja bijak',
+                              style: GoogleFonts.nunito(
+                                fontSize: 11,
+                                color: AppTheme.cream.withOpacity(0.7),
+                                fontWeight: FontWeight.w500,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Container(
-                          width: 32,
-                          height: 32,
+                      ),
+                      const SizedBox(width: 12),
+                      // Avatar yang bisa diklik ke Profile
+                      GestureDetector(
+                        onTap: widget.onProfileTap,
+                        child: Container(
+                          width: 46,
+                          height: 46,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               begin: Alignment.topLeft,
@@ -217,23 +219,23 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
                             ),
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: AppTheme.cream.withOpacity(0.2),
-                              width: 1.5,
+                              color: AppTheme.cream.withOpacity(0.25),
+                              width: 2,
                             ),
                           ),
                           child: Center(
                             child: Text(
                               user.name[0].toUpperCase(),
                               style: GoogleFonts.nunito(
-                                fontSize: 13,
+                                fontSize: 19,
                                 fontWeight: FontWeight.w900,
                                 color: AppTheme.cream,
                               ),
                             ),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -264,7 +266,7 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
                       _buildStatsRow(),
                       const SizedBox(height: 20),
 
-                      _buildSectionHeader('Aktivitas Cepat'),
+                      _buildSectionHeader('Aktivitas Cepat', showSeeAll: false),
                       const SizedBox(height: 12),
                       
                       _buildQuickAction(
@@ -272,7 +274,6 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
                         title: 'Cek Sebelum Beli',
                         subtitle: 'Evaluasi pembelian dengan FOMO Detector',
                         color: AppTheme.sage,
-                        icon: Icons.psychology_rounded,
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => FomoDetectorScreen(auth: _auth),
@@ -285,7 +286,6 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
                         title: 'Smart Wishlist',
                         subtitle: '$_wishlistPending item — $_unlockedCount siap',
                         color: AppTheme.sand,
-                        icon: Icons.bookmark_rounded,
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => WishlistScreen(auth: _auth),
@@ -298,7 +298,6 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
                         title: 'Jejak Belanja',
                         subtitle: 'Rekam dampak kemasan belanjaanmu',
                         color: AppTheme.forestMid,
-                        icon: Icons.inventory_2_rounded,
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => JejakBelanjaScreen(auth: _auth),
@@ -308,7 +307,7 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
                       const SizedBox(height: 24),
 
                       if (_evals.isNotEmpty) ...[
-                        _buildSectionHeader('Evaluasi Terakhir'),
+                        _buildSectionHeader('Evaluasi Terakhir', showSeeAll: true),
                         const SizedBox(height: 12),
                         ..._evals.reversed.take(3).map(
                           (e) => Padding(
@@ -475,15 +474,13 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
           label: 'Pembelian\nDicegah',
           value: '$_skippedCount',
           color: AppTheme.terra,
-          icon: Icons.block_rounded,
         ),
         const SizedBox(width: 10),
         _StatCard(
           emoji: '💰',
-          label: 'Uang\nTerhemat',
-          value: 'Rp ${_fmtP(_savedMoney)}',
+          label: 'Total\nPengeluaran',
+          value: 'Rp ${_fmtP(_totalSpent)}',
           color: AppTheme.forestMid,
-          icon: Icons.savings_rounded,
         ),
         const SizedBox(width: 10),
         _StatCard(
@@ -491,13 +488,12 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
           label: 'Sampah\nDicegah',
           value: '${_totalWaste.toStringAsFixed(1)} kg',
           color: AppTheme.sage,
-          icon: Icons.recycling_rounded,
         ),
       ],
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, {bool showSeeAll = false}) {
     return Row(
       children: [
         Container(
@@ -524,20 +520,35 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
             color: AppTheme.forest,
           ),
         ),
-        const Spacer(),
-        Text(
-          'Lihat Semua',
-          style: GoogleFonts.nunito(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.grey,
+        if (showSeeAll) ...[
+          const Spacer(),
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ReportScreen(auth: _auth),
+                ),
+              );
+            },
+            child: Row(
+              children: [
+                Text(
+                  'Lihat Semua',
+                  style: GoogleFonts.nunito(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.grey,
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppTheme.grey,
+                  size: 18,
+                ),
+              ],
+            ),
           ),
-        ),
-        const Icon(
-          Icons.chevron_right_rounded,
-          color: AppTheme.grey,
-          size: 18,
-        ),
+        ],
       ],
     );
   }
@@ -547,7 +558,6 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
     required String title,
     required String subtitle,
     required Color color,
-    required IconData icon,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
@@ -638,14 +648,12 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
 class _StatCard extends StatelessWidget {
   final String emoji, label, value;
   final Color color;
-  final IconData icon;
 
   const _StatCard({
     required this.emoji,
     required this.label,
     required this.value,
     required this.color,
-    required this.icon,
   });
 
   @override
@@ -668,24 +676,7 @@ class _StatCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Text(emoji, style: const TextStyle(fontSize: 20)),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Icon(
-                    icon,
-                    color: color,
-                    size: 14,
-                  ),
-                ),
-              ],
-            ),
+            Text(emoji, style: const TextStyle(fontSize: 28)),
             const SizedBox(height: 8),
             Text(
               value,

@@ -35,6 +35,15 @@ class FomoResultScreen extends StatelessWidget {
   List<String> get _ecoAlts => ecoAlternatives[eval.category] ?? ecoAlternatives['Lainnya']!;
   String? get _borrowAdvice => borrowSuggestions[eval.category];
 
+  void _goToHome(BuildContext context) {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => HomeScreen(auth: auth),
+      ),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -42,6 +51,19 @@ class FomoResultScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Hasil Evaluasi'),
         backgroundColor: AppTheme.forest,
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.cream),
+          onPressed: () => _goToHome(context),
+          tooltip: 'Kembali ke Beranda',
+        ),
+        elevation: 0,
+        centerTitle: false,
+        titleTextStyle: GoogleFonts.nunito(
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+          color: AppTheme.cream,
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -229,7 +251,7 @@ class FomoResultScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: EcoButton(
-                  label: '⏳ Tambah ke Wishlist',
+                  label: 'Tambah ke Wishlist',
                   onTap: () => _addToWishlist(context),
                   icon: Icons.bookmark_add_outlined,
                 ),
@@ -237,23 +259,15 @@ class FomoResultScreen extends StatelessWidget {
               const SizedBox(height: 10),
             ],
             SizedBox(
-            width: double.infinity,
-            child: EcoButton(
-              label: 'Kembali ke Beranda',
-              onTap: () {
-                // Cek apakah ada route sebelumnya
-                if (Navigator.of(context).canPop()) {
-                  Navigator.of(context).pop(); // Kembali ke halaman sebelumnya
-                } else {
-                  // Jika tidak ada, ke beranda
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (_) => HomeScreen(auth: auth)),
-                  );
-                }
-              },
-              outline: true,
+              width: double.infinity,
+              child: EcoButton(
+                label: 'Kembali ke Beranda',
+                onTap: () => _goToHome(context),
+                outline: true,
+                icon: Icons.home_rounded,
+              ),
             ),
-          ),
+            const SizedBox(height: 10),
           ],
         ),
       ),
@@ -300,13 +314,12 @@ class FomoResultScreen extends StatelessWidget {
       return Image.network(
         imagePath,
         width: double.infinity,
-        height: 200,
-        fit: BoxFit.cover,
+        fit: BoxFit.contain,
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
           return Container(
-            height: 200,
-            color: AppTheme.bgLightGrey,
+            height: 300,
+            color: AppTheme.bgLight,
             child: Center(
               child: CircularProgressIndicator(
                 value: loadingProgress.expectedTotalBytes != null
@@ -321,7 +334,7 @@ class FomoResultScreen extends StatelessWidget {
         errorBuilder: (context, error, stackTrace) => Container(
           height: 200,
           width: double.infinity,
-          color: AppTheme.bgLightGrey,
+          color: AppTheme.bgLight,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -341,16 +354,38 @@ class FomoResultScreen extends StatelessWidget {
     }
 
     // Jika path adalah file lokal (dari gallery/kamera)
-    // ✅ SEKARANG AMAN karena sudah import dart:io
-    return Image.file(
-      File(imagePath),
-      width: double.infinity,
-      height: 200,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) => Container(
+    final file = File(imagePath);
+    if (file.existsSync()) {
+      return Image.file(
+        file,
+        width: double.infinity,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) => Container(
+          height: 200,
+          width: double.infinity,
+          color: AppTheme.bgLight,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.image_not_supported, size: 40, color: AppTheme.grey),
+              const SizedBox(height: 8),
+              Text(
+                'Gambar tidak ditemukan',
+                style: GoogleFonts.nunito(
+                  fontSize: 12,
+                  color: AppTheme.grey,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      // Jika file tidak ditemukan
+      return Container(
         height: 200,
         width: double.infinity,
-        color: AppTheme.bgLightGrey,
+        color: AppTheme.bgLight,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -365,8 +400,8 @@ class FomoResultScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
+      );
+    }
   }
 
   String _fmtP(double p) {
@@ -388,7 +423,7 @@ class FomoResultScreen extends StatelessWidget {
       itemName: eval.itemName,
       category: eval.category,
       price: eval.price,
-      imagePath: eval.imagePath, // ✅ Gambar ikut tersimpan
+      imagePath: eval.imagePath,
       addedAt: DateTime.now(),
       coolingDays: cooling,
     );

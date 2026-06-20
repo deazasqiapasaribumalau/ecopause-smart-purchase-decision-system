@@ -9,8 +9,8 @@ class AppUser {
   final String passwordHash;
   final DateTime createdAt;
   bool notificationsEnabled;
-  String? phone;  // Tambahan: Nomor telepon
-  String? bio;    // Tambahan: Bio/deskripsi diri
+  String? phone;
+  String? bio;
 
   AppUser({
     required this.id,
@@ -24,8 +24,8 @@ class AppUser {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id, 
-        'name': name, 
+        'id': id,
+        'name': name,
         'email': email,
         'passwordHash': passwordHash,
         'createdAt': createdAt.toIso8601String(),
@@ -35,8 +35,8 @@ class AppUser {
       };
 
   factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
-        id: j['id'], 
-        name: j['name'], 
+        id: j['id'],
+        name: j['name'],
         email: j['email'],
         passwordHash: j['passwordHash'],
         createdAt: DateTime.parse(j['createdAt']),
@@ -58,48 +58,48 @@ class FomoEvaluation {
   final DateTime date;
   final String decision;
   final Map<String, bool> answers;
-  final String? imagePath; // Tambahan field untuk foto
+  final String? imagePath;
 
   FomoEvaluation({
-    required this.id, 
+    required this.id,
     required this.userId,
-    required this.itemName, 
+    required this.itemName,
     required this.category,
-    required this.price, 
+    required this.price,
     required this.needScore,
-    required this.fomoScore, 
+    required this.fomoScore,
     required this.date,
-    required this.decision, 
+    required this.decision,
     required this.answers,
-    this.imagePath, // Opsional
+    this.imagePath,
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id, 
-        'userId': userId, 
+        'id': id,
+        'userId': userId,
         'itemName': itemName,
-        'category': category, 
+        'category': category,
         'price': price,
-        'needScore': needScore, 
+        'needScore': needScore,
         'fomoScore': fomoScore,
         'date': date.toIso8601String(),
-        'decision': decision, 
+        'decision': decision,
         'answers': answers,
-        'imagePath': imagePath, // Tambahkan ke JSON
+        'imagePath': imagePath,
       };
 
   factory FomoEvaluation.fromJson(Map<String, dynamic> j) => FomoEvaluation(
-        id: j['id'] ?? '', 
+        id: j['id'] ?? '',
         userId: j['userId'] ?? '',
-        itemName: j['itemName'] ?? '', 
+        itemName: j['itemName'] ?? '',
         category: j['category'] ?? '',
         price: (j['price'] ?? 0).toDouble(),
-        needScore: j['needScore'] ?? 0, 
+        needScore: j['needScore'] ?? 0,
         fomoScore: j['fomoScore'] ?? 0,
         date: DateTime.parse(j['date']),
         decision: j['decision'] ?? 'skip',
         answers: Map<String, bool>.from(j['answers'] ?? {}),
-        imagePath: j['imagePath'], // Baca dari JSON
+        imagePath: j['imagePath'],
       );
 }
 
@@ -112,22 +112,22 @@ class WishlistItem {
   final double price;
   final DateTime addedAt;
   final int coolingDays;
-  final String? imagePath; // 🆕 TAMBAHKAN FIELD INI
+  final String? imagePath;
   bool isBought;
   bool isSkipped;
   bool notified;
 
   WishlistItem({
-    required this.id, 
+    required this.id,
     required this.userId,
-    required this.itemName, 
+    required this.itemName,
     required this.category,
-    required this.price, 
+    required this.price,
     required this.addedAt,
     required this.coolingDays,
-    this.imagePath, // 🆕 TAMBAHKAN PARAMETER INI
-    this.isBought = false, 
-    this.isSkipped = false, 
+    this.imagePath,
+    this.isBought = false,
+    this.isSkipped = false,
     this.notified = false,
   });
 
@@ -141,34 +141,33 @@ class WishlistItem {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id, 
-        'userId': userId, 
+        'id': id,
+        'userId': userId,
         'itemName': itemName,
-        'category': category, 
+        'category': category,
         'price': price,
         'addedAt': addedAt.toIso8601String(),
         'coolingDays': coolingDays,
-        'imagePath': imagePath, // 🆕 TAMBAHKAN KE JSON
-        'isBought': isBought, 
-        'isSkipped': isSkipped, 
+        'imagePath': imagePath,
+        'isBought': isBought,
+        'isSkipped': isSkipped,
         'notified': notified,
       };
 
   factory WishlistItem.fromJson(Map<String, dynamic> j) => WishlistItem(
-        id: j['id'] ?? '', 
+        id: j['id'] ?? '',
         userId: j['userId'] ?? '',
-        itemName: j['itemName'] ?? '', 
+        itemName: j['itemName'] ?? '',
         category: j['category'] ?? '',
         price: (j['price'] ?? 0).toDouble(),
         addedAt: DateTime.parse(j['addedAt']),
         coolingDays: j['coolingDays'] ?? 3,
-        imagePath: j['imagePath'], // 🆕 BACA DARI JSON
+        imagePath: j['imagePath'],
         isBought: j['isBought'] ?? false,
         isSkipped: j['isSkipped'] ?? false,
         notified: j['notified'] ?? false,
       );
 
-  // 🆕 COPY WITH METHOD (untuk update data dengan mudah)
   WishlistItem copyWith({
     String? id,
     String? userId,
@@ -209,45 +208,75 @@ class ShoppingLog {
   final bool isOnline;
   final DateTime date;
   final String deliveryType;
+  final String? imagePath;
 
   ShoppingLog({
-    required this.id, 
+    required this.id,
     required this.userId,
-    required this.itemName, 
+    required this.itemName,
     required this.category,
-    required this.price, 
+    required this.price,
     required this.packageCount,
-    required this.isOnline, 
+    required this.isOnline,
     required this.date,
     this.deliveryType = 'regular',
+    this.imagePath,
   });
 
   double get wasteKg => packageCount * 0.3;
   double get co2Emission => isOnline ? (deliveryType == 'sameday' ? 1.2 : 0.6) : 0.1;
 
   Map<String, dynamic> toJson() => {
-        'id': id, 
-        'userId': userId, 
+        'id': id,
+        'userId': userId,
         'itemName': itemName,
-        'category': category, 
+        'category': category,
         'price': price,
-        'packageCount': packageCount, 
+        'packageCount': packageCount,
         'isOnline': isOnline,
-        'date': date.toIso8601String(), 
+        'date': date.toIso8601String(),
         'deliveryType': deliveryType,
+        'imagePath': imagePath,
       };
 
   factory ShoppingLog.fromJson(Map<String, dynamic> j) => ShoppingLog(
-        id: j['id'] ?? '', 
+        id: j['id'] ?? '',
         userId: j['userId'] ?? '',
-        itemName: j['itemName'] ?? '', 
+        itemName: j['itemName'] ?? '',
         category: j['category'] ?? '',
         price: (j['price'] ?? 0).toDouble(),
         packageCount: j['packageCount'] ?? 1,
         isOnline: j['isOnline'] ?? true,
         date: DateTime.parse(j['date']),
         deliveryType: j['deliveryType'] ?? 'regular',
+        imagePath: j['imagePath'],
       );
+
+  ShoppingLog copyWith({
+    String? id,
+    String? userId,
+    String? itemName,
+    String? category,
+    double? price,
+    int? packageCount,
+    bool? isOnline,
+    DateTime? date,
+    String? deliveryType,
+    String? imagePath,
+  }) {
+    return ShoppingLog(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      itemName: itemName ?? this.itemName,
+      category: category ?? this.category,
+      price: price ?? this.price,
+      packageCount: packageCount ?? this.packageCount,
+      isOnline: isOnline ?? this.isOnline,
+      date: date ?? this.date,
+      deliveryType: deliveryType ?? this.deliveryType,
+      imagePath: imagePath ?? this.imagePath,
+    );
+  }
 }
 
 // ─── Notification ─────────────────────────────────────────────────────────────
@@ -260,44 +289,44 @@ class AppNotification {
   bool isRead;
 
   AppNotification({
-    required this.id, 
+    required this.id,
     required this.userId,
-    required this.title, 
+    required this.title,
     required this.body,
-    required this.time, 
+    required this.time,
     this.isRead = false,
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id, 
-        'userId': userId, 
+        'id': id,
+        'userId': userId,
         'title': title,
-        'body': body, 
-        'time': time.toIso8601String(), 
+        'body': body,
+        'time': time.toIso8601String(),
         'isRead': isRead,
       };
 
   factory AppNotification.fromJson(Map<String, dynamic> j) => AppNotification(
-        id: j['id'], 
+        id: j['id'],
         userId: j['userId'],
-        title: j['title'], 
+        title: j['title'],
         body: j['body'],
-        time: DateTime.parse(j['time']), 
+        time: DateTime.parse(j['time']),
         isRead: j['isRead'] ?? false,
       );
 }
 
 // ─── Static Data ──────────────────────────────────────────────────────────────
 const List<String> productCategories = [
-  'Fashion & Pakaian', 
-  'Elektronik & Gadget', 
+  'Fashion & Pakaian',
+  'Elektronik & Gadget',
   'Peralatan Rumah',
-  'Makanan & Minuman', 
-  'Kecantikan & Skincare', 
+  'Makanan & Minuman',
+  'Kecantikan & Skincare',
   'Olahraga & Outdoor',
-  'Buku & Stationery', 
-  'Furnitur', 
-  'Mainan & Hobi', 
+  'Buku & Stationery',
+  'Furnitur',
+  'Mainan & Hobi',
   'Lainnya',
 ];
 
