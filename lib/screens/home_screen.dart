@@ -192,6 +192,7 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
               backgroundColor: AppTheme.forest,
               elevation: 0,
               flexibleSpace: FlexibleSpaceBar(
+                collapseMode: CollapseMode.pin,
                 background: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -203,7 +204,7 @@ class _DashboardPageState extends State<_DashboardPage> with AutomaticKeepAliveC
                       ],
                     ),
                   ),
-                  padding: const EdgeInsets.fromLTRB(20, 42, 20, 6),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 6),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [

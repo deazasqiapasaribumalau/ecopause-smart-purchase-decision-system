@@ -1,39 +1,65 @@
 // lib/utils/storage_service.dart
+import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
-import '../database/database_helper.dart';
 
 class StorageService {
+  static const _usersKey      = 'users';
   static const _currentUidKey = 'current_uid';
+  static const _fomoKey       = 'fomo_evals';
+  static const _wishlistKey   = 'wishlist';
+  static const _logsKey       = 'shopping_logs';
+  static const _notifKey      = 'notifications';
   static const _profileImageKey = 'profile_image_';
 
-  static DatabaseHelper get _db => DatabaseHelper();
-
   // ── Auth ──────────────────────────────────────────────────────────────────
+  static Future<List<AppUser>> _loadUsers() async {
+    final p = await SharedPreferences.getInstance();
+    final raw = p.getStringList(_usersKey) ?? [];
+    return raw.map((e) => AppUser.fromJson(jsonDecode(e))).toList();
+  }
+
+  static Future<void> _saveUsers(List<AppUser> users) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setStringList(_usersKey, users.map((u) => jsonEncode(u.toJson())).toList());
+  }
 
   static Future<AppUser?> getUserByEmail(String email) async {
-    final db = await _db.database;
-    return await UserDao(db).getByEmail(email);
+    final users = await _loadUsers();
+    try {
+      return users.firstWhere((u) => u.email.toLowerCase() == email.toLowerCase());
+    } catch (_) { return null; }
   }
 
   static Future<bool> registerUser(AppUser user) async {
     final existing = await getUserByEmail(user.email);
     if (existing != null) return false;
-    final db = await _db.database;
-    await UserDao(db).insert(user);
+    final users = await _loadUsers();
+    users.add(user);
+    await _saveUsers(users);
     return true;
   }
 
   static Future<void> updateUser(AppUser updated) async {
-    final db = await _db.database;
-    await UserDao(db).update(updated);
+    final users = await _loadUsers();
+    final idx = users.indexWhere((u) => u.id == updated.id);
+    if (idx != -1) { 
+      users[idx] = updated; 
+      await _saveUsers(users); 
+    }
   }
 
   static Future<void> saveUser(AppUser user) async {
-    final db = await _db.database;
-    await UserDao(db).insert(user);
+    final users = await _loadUsers();
+    final idx = users.indexWhere((u) => u.id == user.id);
+    if (idx != -1) {
+      users[idx] = user;
+    } else {
+      users.add(user);
+    }
+    await _saveUsers(users);
   }
 
   static Future<void> setCurrentUser(String uid) async {
@@ -45,8 +71,12 @@ class StorageService {
     final p = await SharedPreferences.getInstance();
     final uid = p.getString(_currentUidKey);
     if (uid == null) return null;
-    final db = await _db.database;
-    return await UserDao(db).getById(uid);
+    final users = await _loadUsers();
+    try { 
+      return users.firstWhere((u) => u.id == uid); 
+    } catch (_) { 
+      return null; 
+    }
   }
 
   static Future<void> logout() async {
@@ -55,7 +85,6 @@ class StorageService {
   }
 
   // ── Profile Image ─────────────────────────────────────────────────────────
-
   static Future<String?> getProfileImage(String userId) async {
     try {
       final p = await SharedPreferences.getInstance();
@@ -69,14 +98,14 @@ class StorageService {
   static Future<String?> saveProfileImage(String userId, File image) async {
     try {
       final p = await SharedPreferences.getInstance();
-
+      
       final appDir = await getApplicationDocumentsDirectory();
       final imagesDir = Directory('${appDir.path}/profile_images');
-
+      
       if (!await imagesDir.exists()) {
         await imagesDir.create(recursive: true);
       }
-
+      
       final oldPath = p.getString('$_profileImageKey$userId');
       if (oldPath != null && oldPath.isNotEmpty) {
         try {
@@ -88,11 +117,11 @@ class StorageService {
           print('⚠️ Gagal hapus gambar lama: $e');
         }
       }
-
+      
       final fileName = 'profile_${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final savedPath = '${imagesDir.path}/$fileName';
       final savedImage = await image.copy(savedPath);
-
+      
       await p.setString('$_profileImageKey$userId', savedImage.path);
       print('✅ Profile image saved: ${savedImage.path}');
       return savedImage.path;
@@ -106,7 +135,7 @@ class StorageService {
     try {
       final p = await SharedPreferences.getInstance();
       final path = p.getString('$_profileImageKey$userId');
-
+      
       if (path != null && path.isNotEmpty) {
         try {
           final file = File(path);
@@ -118,7 +147,7 @@ class StorageService {
           print('⚠️ Gagal hapus file profile image: $e');
         }
       }
-
+      
       await p.remove('$_profileImageKey$userId');
     } catch (e) {
       print('❌ Gagal remove profile image: $e');
@@ -126,27 +155,43 @@ class StorageService {
   }
 
   // ── FOMO Evaluations ──────────────────────────────────────────────────────
-
   static Future<List<FomoEvaluation>> loadEvals(String userId) async {
-    final db = await _db.database;
-    return await EvaluationDao(db).getByUserId(userId);
+    final p = await SharedPreferences.getInstance();
+    final raw = p.getStringList(_fomoKey) ?? [];
+    return raw
+        .map((e) => FomoEvaluation.fromJson(jsonDecode(e)))
+        .where((e) => e.userId == userId)
+        .toList();
   }
 
   static Future<void> saveEval(FomoEvaluation eval) async {
-    final db = await _db.database;
-    await EvaluationDao(db).insert(eval);
+    final p = await SharedPreferences.getInstance();
+    final list = p.getStringList(_fomoKey) ?? [];
+    list.add(jsonEncode(eval.toJson()));
+    await p.setStringList(_fomoKey, list);
   }
 
   // ── Wishlist ──────────────────────────────────────────────────────────────
-
   static Future<List<WishlistItem>> loadWishlist(String userId) async {
-    final db = await _db.database;
-    return await WishlistDao(db).getByUserId(userId);
+    final p = await SharedPreferences.getInstance();
+    final raw = p.getStringList(_wishlistKey) ?? [];
+    return raw
+        .map((e) => WishlistItem.fromJson(jsonDecode(e)))
+        .where((e) => e.userId == userId)
+        .toList();
+  }
+
+  static Future<void> _saveAllWishlist(List<WishlistItem> all) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setStringList(_wishlistKey, all.map((e) => jsonEncode(e.toJson())).toList());
   }
 
   static Future<void> addToWishlist(WishlistItem item) async {
-    final db = await _db.database;
-    await WishlistDao(db).insert(item);
+    final p = await SharedPreferences.getInstance();
+    final raw = p.getStringList(_wishlistKey) ?? [];
+    final all = raw.map((e) => WishlistItem.fromJson(jsonDecode(e))).toList();
+    all.add(item);
+    await _saveAllWishlist(all);
     await addNotification(AppNotification(
       id: 'notif_${item.id}',
       userId: item.userId,
@@ -157,15 +202,31 @@ class StorageService {
   }
 
   static Future<void> updateWishlistItem(WishlistItem updated) async {
-    final db = await _db.database;
-    await WishlistDao(db).update(updated);
+    final p = await SharedPreferences.getInstance();
+    final raw = p.getStringList(_wishlistKey) ?? [];
+    final all = raw.map((e) => WishlistItem.fromJson(jsonDecode(e))).toList();
+    final idx = all.indexWhere((i) => i.id == updated.id);
+    if (idx != -1) { 
+      all[idx] = updated; 
+      await _saveAllWishlist(all); 
+    }
   }
 
   static Future<void> deleteWishlistItem(String itemId) async {
     try {
-      final db = await _db.database;
-      await WishlistDao(db).delete(itemId);
-      print('✅ Item berhasil dihapus: $itemId');
+      final p = await SharedPreferences.getInstance();
+      final raw = p.getStringList(_wishlistKey) ?? [];
+      final all = raw.map((e) => WishlistItem.fromJson(jsonDecode(e))).toList();
+      
+      final beforeCount = all.length;
+      all.removeWhere((item) => item.id == itemId);
+      
+      if (all.length < beforeCount) {
+        await _saveAllWishlist(all);
+        print('✅ Item berhasil dihapus: $itemId');
+      } else {
+        print('⚠️ Item tidak ditemukan: $itemId');
+      }
     } catch (e) {
       print('❌ Gagal menghapus item: $e');
       rethrow;
@@ -173,15 +234,20 @@ class StorageService {
   }
 
   // ── Shopping Logs ─────────────────────────────────────────────────────────
-
   static Future<List<ShoppingLog>> loadLogs(String userId) async {
-    final db = await _db.database;
-    return await ShoppingLogDao(db).getByUserId(userId);
+    final p = await SharedPreferences.getInstance();
+    final raw = p.getStringList(_logsKey) ?? [];
+    return raw
+        .map((e) => ShoppingLog.fromJson(jsonDecode(e)))
+        .where((e) => e.userId == userId)
+        .toList();
   }
 
   static Future<void> addLog(ShoppingLog log) async {
-    final db = await _db.database;
-    await ShoppingLogDao(db).insert(log);
+    final p = await SharedPreferences.getInstance();
+    final list = p.getStringList(_logsKey) ?? [];
+    list.add(jsonEncode(log.toJson()));
+    await p.setStringList(_logsKey, list);
   }
 
   static Future<void> saveLog(ShoppingLog log) async {
@@ -190,9 +256,18 @@ class StorageService {
 
   static Future<void> updateLog(ShoppingLog updatedLog) async {
     try {
-      final db = await _db.database;
-      await ShoppingLogDao(db).update(updatedLog);
-      print('✅ Log berhasil diupdate: ${updatedLog.id}');
+      final p = await SharedPreferences.getInstance();
+      final raw = p.getStringList(_logsKey) ?? [];
+      final all = raw.map((e) => ShoppingLog.fromJson(jsonDecode(e))).toList();
+      final idx = all.indexWhere((l) => l.id == updatedLog.id);
+      
+      if (idx != -1) {
+        all[idx] = updatedLog;
+        await p.setStringList(_logsKey, all.map((e) => jsonEncode(e.toJson())).toList());
+        print('✅ Log berhasil diupdate: ${updatedLog.id}');
+      } else {
+        print('⚠️ Log tidak ditemukan: ${updatedLog.id}');
+      }
     } catch (e) {
       print('❌ Gagal mengupdate log: $e');
       rethrow;
@@ -201,9 +276,19 @@ class StorageService {
 
   static Future<void> deleteLog(String logId) async {
     try {
-      final db = await _db.database;
-      await ShoppingLogDao(db).delete(logId);
-      print('✅ Log berhasil dihapus: $logId');
+      final p = await SharedPreferences.getInstance();
+      final raw = p.getStringList(_logsKey) ?? [];
+      final all = raw.map((e) => ShoppingLog.fromJson(jsonDecode(e))).toList();
+      
+      final beforeCount = all.length;
+      all.removeWhere((l) => l.id == logId);
+      
+      if (all.length < beforeCount) {
+        await p.setStringList(_logsKey, all.map((e) => jsonEncode(e.toJson())).toList());
+        print('✅ Log berhasil dihapus: $logId');
+      } else {
+        print('⚠️ Log tidak ditemukan: $logId');
+      }
     } catch (e) {
       print('❌ Gagal menghapus log: $e');
       rethrow;
@@ -211,35 +296,40 @@ class StorageService {
   }
 
   // ── Notifications ─────────────────────────────────────────────────────────
-
   static Future<List<AppNotification>> loadNotifications(String userId) async {
-    final db = await _db.database;
-    return await NotificationDao(db).getByUserId(userId);
+    final p = await SharedPreferences.getInstance();
+    final raw = p.getStringList(_notifKey) ?? [];
+    return raw
+        .map((e) => AppNotification.fromJson(jsonDecode(e)))
+        .where((e) => e.userId == userId)
+        .toList()
+      ..sort((a, b) => b.time.compareTo(a.time));
   }
 
   static Future<void> addNotification(AppNotification notif) async {
-    final db = await _db.database;
-    await NotificationDao(db).insert(notif);
+    final p = await SharedPreferences.getInstance();
+    final list = p.getStringList(_notifKey) ?? [];
+    list.add(jsonEncode(notif.toJson()));
+    await p.setStringList(_notifKey, list);
   }
 
   static Future<void> markNotifRead(String notifId) async {
-    final db = await _db.database;
-    await NotificationDao(db).markRead(notifId);
+    final p = await SharedPreferences.getInstance();
+    final raw = p.getStringList(_notifKey) ?? [];
+    final all = raw.map((e) => AppNotification.fromJson(jsonDecode(e))).toList();
+    for (final n in all) { 
+      if (n.id == notifId) n.isRead = true; 
+    }
+    await p.setStringList(_notifKey, all.map((e) => jsonEncode(e.toJson())).toList());
   }
 
-  static Future<void> markAllNotifRead(String userId) async {
-    final db = await _db.database;
-    await NotificationDao(db).markAllRead(userId);
-  }
-
-  // ── Check wishlist unlocks and create notifications ─────────────────────
-
+  // ── Check wishlist unlocks and create notifications ────────────────────────
   static Future<void> checkWishlistUnlocks(String userId) async {
     final items = await loadWishlist(userId);
     for (final item in items) {
       if (item.isPending && item.isUnlocked && !item.notified) {
-        final updatedItem = item.copyWith(notified: true);
-        await updateWishlistItem(updatedItem);
+        item.notified = true;
+        await updateWishlistItem(item);
         await addNotification(AppNotification(
           id: 'unlock_${item.id}',
           userId: userId,
@@ -249,18 +339,5 @@ class StorageService {
         ));
       }
     }
-  }
-
-  // ── Utility: Clear all data ──────────────────────────────────────────────
-
-  static Future<void> clearAllData() async {
-    final db = await _db.database;
-    await db.delete('users');
-    await db.delete('evaluations');
-    await db.delete('wishlist');
-    await db.delete('shopping_logs');
-    await db.delete('notifications');
-    await logout();
-    print('🗑️ All data cleared');
   }
 }
