@@ -3,22 +3,24 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../utils/app_theme.dart';
 import '../utils/auth_provider.dart';
 import '../utils/storage_service.dart';
 import '../widgets/common_widgets.dart';
 import 'home_screen.dart';
-import 'login_screen.dart';
+import 'splash_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final AuthProvider auth;
   final VoidCallback onDataChanged;
   final VoidCallback onProfileImageChanged;
+
   const ProfileScreen({
-    super.key, 
-    required this.auth, 
-    required this.onDataChanged, 
+    super.key,
+    required this.auth,
+    required this.onDataChanged,
     required this.onProfileImageChanged,
   });
 
@@ -45,7 +47,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadProfileImage() async {
     try {
       final imagePath = await StorageService.getProfileImage(widget.auth.user!.id);
-      print('📸 Loading profile image: $imagePath');
 
       if (!mounted) return;
 
@@ -55,18 +56,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           setState(() {
             _profileImage = file;
           });
-          print('✅ Profile image loaded');
         } else {
           setState(() {
             _profileImage = null;
           });
-          print('⚠️ Profile image file not found');
         }
       } else {
         setState(() {
           _profileImage = null;
         });
-        print('ℹ️ No profile image');
       }
     } catch (e) {
       print('❌ Error loading profile image: $e');
@@ -79,9 +77,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final res = await Future.wait([
         StorageService.loadEvals(uid),
         StorageService.loadLogs(uid),
-        StorageService.loadNotifications(uid)
+        StorageService.loadNotifications(uid),
       ]);
-      
+
       if (mounted) {
         setState(() {
           _evals = res[0] as List<FomoEvaluation>;
@@ -190,247 +188,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Avatar + info
-                    EcoCard(
-                      child: Row(
-                        children: [
-                          GestureDetector(
-                            onTap: _isImageLoading ? null : () => _showChangePhotoDialog(context),
-                            child: Container(
-                              width: 64,
-                              height: 64,
-                              decoration: BoxDecoration(
-                                color: AppTheme.forest,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppTheme.forest.withOpacity(0.3),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                                image: _profileImage != null
-                                    ? DecorationImage(
-                                        image: FileImage(_profileImage!),
-                                        fit: BoxFit.cover,
-                                      )
-                                    : null,
-                              ),
-                              alignment: Alignment.center,
-                              child: _isImageLoading
-                                  ? const SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CircularProgressIndicator(
-                                        color: AppTheme.cream,
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : _profileImage == null
-                                      ? Text(
-                                          user.name[0].toUpperCase(),
-                                          style: GoogleFonts.nunito(
-                                            fontSize: 28,
-                                            fontWeight: FontWeight.w900,
-                                            color: AppTheme.cream,
-                                          ),
-                                        )
-                                      : null,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  user.name,
-                                  style: GoogleFonts.nunito(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppTheme.forest,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  user.email,
-                                  style: GoogleFonts.nunito(
-                                    fontSize: 13,
-                                    color: AppTheme.grey,
-                                  ),
-                                ),
-                                if (user.phone != null && user.phone!.isNotEmpty) ...[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    user.phone!,
-                                    style: GoogleFonts.nunito(
-                                      fontSize: 13,
-                                      color: AppTheme.grey,
-                                    ),
-                                  ),
-                                ],
-                                const SizedBox(height: 4),
-                                EcoChip(label: 'Sejak ${_fmtDate(user.createdAt)}'),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined, color: AppTheme.sage),
-                            onPressed: () => _showEditProfile(context),
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildAvatarSection(user),
                     const SizedBox(height: 16),
-
-                    // Stats row
-                    Row(
-                      children: [
-                        _miniStatCard(
-                          '${_evals.length}',
-                          'Evaluasi\nDilakukan',
-                          '🔍',
-                          AppTheme.sage,
-                        ),
-                        const SizedBox(width: 10),
-                        _miniStatCard(
-                          '${_evals.where((e) => e.decision == 'skip').length}',
-                          'Pembelian\nDicegah',
-                          '🚫',
-                          AppTheme.terra,
-                        ),
-                        const SizedBox(width: 10),
-                        _miniStatCard(
-                          '${_logs.length}',
-                          'Belanja\nDicatat',
-                          '📦',
-                          AppTheme.forestMid,
-                        ),
-                      ],
-                    ),
+                    _buildStatsRow(),
                     const SizedBox(height: 16),
-
-                    // Sustainability history bar chart
-                    EcoCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '📈 Riwayat Sustainability Score',
-                            style: GoogleFonts.nunito(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.forest,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Skor mingguan 4 minggu terakhir',
-                            style: GoogleFonts.nunito(
-                              fontSize: 12,
-                              color: AppTheme.grey,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: _susHistory.asMap().entries.map((e) {
-                              final score = e.value;
-                              final label = ['W-3', 'W-2', 'W-1', 'Ini'][e.key];
-                              final color = AppTheme.susColor(score);
-                              final barH = score == 0 ? 4.0 : (score / 100) * 80;
-                              return Column(
-                                children: [
-                                  Text(
-                                    score == 0 ? '-' : score.toStringAsFixed(0),
-                                    style: GoogleFonts.nunito(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                      color: color,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Container(
-                                    width: 48,
-                                    height: barH,
-                                    decoration: BoxDecoration(
-                                      color: score == 0
-                                          ? AppTheme.divider
-                                          : color.withOpacity(0.25),
-                                      borderRadius: const BorderRadius.vertical(
-                                        top: Radius.circular(6),
-                                      ),
-                                      border: score == 0
-                                          ? null
-                                          : Border.all(color: color, width: 1.5),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    label,
-                                    style: GoogleFonts.nunito(
-                                      fontSize: 10,
-                                      color: AppTheme.grey,
-                                    ),
-                                  ),
-                                ],
-                              );
-                            }).toList(),
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildSustainabilityChart(),
                     const SizedBox(height: 16),
-
-                    // Settings
-                    EcoCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '⚙️ Pengaturan',
-                            style: GoogleFonts.nunito(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.forest,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          _settingRow(
-                            icon: Icons.notifications_outlined,
-                            title: 'Notifikasi',
-                            subtitle: 'Pengingat cooling period & eco tips',
-                            trailing: Switch(
-                              value: notifEnabled,
-                              activeColor: AppTheme.sage,
-                              onChanged: (v) async {
-                                await widget.auth.updateProfile(
-                                  notificationsEnabled: v,
-                                );
-                                setState(() {});
-                              },
-                            ),
-                          ),
-                          const Divider(height: 20),
-                          _settingRow(
-                            icon: Icons.eco_outlined,
-                            title: 'SDG Focus',
-                            subtitle: 'SDG 12 — Responsible Consumption',
-                            trailing: const EcoChip(label: 'Aktif'),
-                          ),
-                          const Divider(height: 20),
-                          _settingRow(
-                            icon: Icons.info_outline,
-                            title: 'Versi Aplikasi',
-                            subtitle: 'EcoPause v1.0.0',
-                            trailing: const SizedBox.shrink(),
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildSettingsSection(notifEnabled),
                     const SizedBox(height: 16),
-
                     SizedBox(
                       width: double.infinity,
                       child: EcoButton(
@@ -449,150 +214,250 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showChangePhotoDialog(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Foto Profil',
-                style: GoogleFonts.nunito(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.forest,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _PhotoSourceButton(
-                    icon: Icons.photo_library,
-                    label: 'Galeri',
-                    onTap: () {
-                      Navigator.pop(context);
-                      _pickImage(ImageSource.gallery);
-                    },
+  // ========== WIDGET BUILDERS ==========
+
+  Widget _buildAvatarSection(AppUser user) {
+    return EcoCard(
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: _isImageLoading ? null : () => _showChangePhotoDialog(context),
+            child: Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: AppTheme.forest,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.forest.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
                   ),
-                  _PhotoSourceButton(
-                    icon: Icons.camera_alt,
-                    label: 'Kamera',
-                    onTap: () {
-                      Navigator.pop(context);
-                      _pickImage(ImageSource.camera);
-                    },
-                  ),
-                  if (_profileImage != null)
-                    _PhotoSourceButton(
-                      icon: Icons.delete,
-                      label: 'Hapus',
-                      color: Colors.red,
-                      onTap: () {
-                        Navigator.pop(context);
-                        _removeProfileImage();
-                      },
-                    ),
                 ],
+                image: _profileImage != null
+                    ? DecorationImage(
+                        image: FileImage(_profileImage!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
               ),
-            ],
+              alignment: Alignment.center,
+              child: _isImageLoading
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        color: AppTheme.cream,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : _profileImage == null
+                      ? Text(
+                          user.name[0].toUpperCase(),
+                          style: GoogleFonts.nunito(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            color: AppTheme.cream,
+                          ),
+                        )
+                      : null,
+            ),
           ),
-        ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user.name,
+                  style: GoogleFonts.nunito(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.forest,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  user.email,
+                  style: GoogleFonts.nunito(
+                    fontSize: 13,
+                    color: AppTheme.grey,
+                  ),
+                ),
+                if (user.phone != null && user.phone!.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    user.phone!,
+                    style: GoogleFonts.nunito(
+                      fontSize: 13,
+                      color: AppTheme.grey,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 4),
+                EcoChip(label: 'Sejak ${_fmtDate(user.createdAt)}'),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.edit_outlined, color: AppTheme.sage),
+            onPressed: () => _showEditProfile(context),
+          ),
+        ],
       ),
     );
   }
 
-  Future<void> _pickImage(ImageSource source) async {
-    setState(() => _isImageLoading = true);
+  Widget _buildStatsRow() {
+    return Row(
+      children: [
+        _miniStatCard(
+          '${_evals.length}',
+          'Evaluasi\nDilakukan',
+          '🔍',
+          AppTheme.sage,
+        ),
+        const SizedBox(width: 10),
+        _miniStatCard(
+          '${_evals.where((e) => e.decision == 'skip').length}',
+          'Pembelian\nDicegah',
+          '🚫',
+          AppTheme.terra,
+        ),
+        const SizedBox(width: 10),
+        _miniStatCard(
+          '${_logs.length}',
+          'Belanja\nDicatat',
+          '📦',
+          AppTheme.forestMid,
+        ),
+      ],
+    );
+  }
 
-    try {
-      final XFile? image = await _picker.pickImage(
-        source: source,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 85,
-      );
-      
-      if (image != null) {
-        final file = File(image.path);
-        
-        final savedPath = await StorageService.saveProfileImage(
-          widget.auth.user!.id,
-          file,
-        );
-        
-        if (savedPath != null && mounted) {
-          setState(() {
-            _profileImage = File(savedPath);
-            _isImageLoading = false;
-          });
-
-          widget.onProfileImageChanged();
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✅ Foto profil berhasil diupdate!'),
-              backgroundColor: AppTheme.sage,
-              duration: Duration(seconds: 2),
+  Widget _buildSustainabilityChart() {
+    return EcoCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '📈 Riwayat Sustainability Score',
+            style: GoogleFonts.nunito(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.forest,
             ),
-          );
-        }
-      } else {
-        setState(() => _isImageLoading = false);
-      }
-    } catch (e) {
-      setState(() => _isImageLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Gagal mengupload foto: $e'),
-            backgroundColor: AppTheme.terra,
           ),
-        );
-      }
-    }
+          const SizedBox(height: 4),
+          Text(
+            'Skor mingguan 4 minggu terakhir',
+            style: GoogleFonts.nunito(
+              fontSize: 12,
+              color: AppTheme.grey,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: _susHistory.asMap().entries.map((e) {
+              final score = e.value;
+              final label = ['W-3', 'W-2', 'W-1', 'Ini'][e.key];
+              final color = AppTheme.susColor(score);
+              final barH = score == 0 ? 4.0 : (score / 100) * 80;
+              return Column(
+                children: [
+                  Text(
+                    score == 0 ? '-' : score.toStringAsFixed(0),
+                    style: GoogleFonts.nunito(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: color,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    width: 48,
+                    height: barH,
+                    decoration: BoxDecoration(
+                      color: score == 0
+                          ? AppTheme.divider
+                          : color.withOpacity(0.25),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(6),
+                      ),
+                      border: score == 0
+                          ? null
+                          : Border.all(color: color, width: 1.5),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    style: GoogleFonts.nunito(
+                      fontSize: 10,
+                      color: AppTheme.grey,
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
   }
 
-  Future<void> _removeProfileImage() async {
-    setState(() => _isImageLoading = true);
-
-    try {
-      await StorageService.removeProfileImage(widget.auth.user!.id);
-      
-      if (mounted) {
-        setState(() {
-          _profileImage = null;
-          _isImageLoading = false;
-        });
-        
-        widget.onProfileImageChanged();
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('🗑️ Foto profil berhasil dihapus'),
-            backgroundColor: AppTheme.terra,
-            duration: Duration(seconds: 2),
+  Widget _buildSettingsSection(bool notifEnabled) {
+    return EcoCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '⚙️ Pengaturan',
+            style: GoogleFonts.nunito(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.forest,
+            ),
           ),
-        );
-      }
-    } catch (e) {
-      setState(() => _isImageLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Gagal menghapus foto: $e'),
-            backgroundColor: AppTheme.terra,
+          const SizedBox(height: 14),
+          _settingRow(
+            icon: Icons.notifications_outlined,
+            title: 'Notifikasi',
+            subtitle: 'Pengingat cooling period & eco tips',
+            trailing: Switch(
+              value: notifEnabled,
+              activeColor: AppTheme.sage,
+              onChanged: (v) async {
+                await widget.auth.updateProfile(
+                  notificationsEnabled: v,
+                );
+                setState(() {});
+              },
+            ),
           ),
-        );
-      }
-    }
+          const Divider(height: 20),
+          _settingRow(
+            icon: Icons.eco_outlined,
+            title: 'SDG Focus',
+            subtitle: 'SDG 12 — Responsible Consumption',
+            trailing: const EcoChip(label: 'Aktif'),
+          ),
+          const Divider(height: 20),
+          _settingRow(
+            icon: Icons.info_outline,
+            title: 'Versi Aplikasi',
+            subtitle: 'EcoPause v1.0.0',
+            trailing: const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
   }
+
+  // ========== HELPER WIDGETS ==========
 
   Widget _miniStatCard(String val, String label, String emoji, Color color) {
     return Expanded(
@@ -607,7 +472,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: color.withOpacity(0.06),
               blurRadius: 8,
               offset: const Offset(0, 3),
-            )
+            ),
           ],
         ),
         child: Column(
@@ -681,6 +546,153 @@ class _ProfileScreenState extends State<ProfileScreen> {
         trailing,
       ],
     );
+  }
+
+  // ========== ACTION METHODS ==========
+
+  void _showChangePhotoDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Foto Profil',
+                style: GoogleFonts.nunito(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.forest,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _PhotoSourceButton(
+                    icon: Icons.photo_library,
+                    label: 'Galeri',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickImage(ImageSource.gallery);
+                    },
+                  ),
+                  _PhotoSourceButton(
+                    icon: Icons.camera_alt,
+                    label: 'Kamera',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickImage(ImageSource.camera);
+                    },
+                  ),
+                  if (_profileImage != null)
+                    _PhotoSourceButton(
+                      icon: Icons.delete,
+                      label: 'Hapus',
+                      color: Colors.red,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _removeProfileImage();
+                      },
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    setState(() => _isImageLoading = true);
+
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        final file = File(image.path);
+
+        final savedPath = await StorageService.saveProfileImage(
+          widget.auth.user!.id,
+          file,
+        );
+
+        if (savedPath != null && mounted) {
+          setState(() {
+            _profileImage = File(savedPath);
+            _isImageLoading = false;
+          });
+
+          widget.onProfileImageChanged();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Foto profil berhasil diupdate!'),
+              backgroundColor: AppTheme.sage,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        setState(() => _isImageLoading = false);
+      }
+    } catch (e) {
+      setState(() => _isImageLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Gagal mengupload foto: $e'),
+            backgroundColor: AppTheme.terra,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _removeProfileImage() async {
+    setState(() => _isImageLoading = true);
+
+    try {
+      await StorageService.removeProfileImage(widget.auth.user!.id);
+
+      if (mounted) {
+        setState(() {
+          _profileImage = null;
+          _isImageLoading = false;
+        });
+
+        widget.onProfileImageChanged();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🗑️ Foto profil berhasil dihapus'),
+            backgroundColor: AppTheme.terra,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _isImageLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Gagal menghapus foto: $e'),
+            backgroundColor: AppTheme.terra,
+          ),
+        );
+      }
+    }
   }
 
   void _showEditProfile(BuildContext context) {
@@ -854,6 +866,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _load();
   }
 
+  // ✅ LOGOUT KE SPLASH SCREEN + RESET ONBOARDING
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -891,11 +904,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             onPressed: () async {
+              // ✅ 1. LOGOUT
               await widget.auth.logout();
+
+              // ✅ 2. RESET ONBOARDING
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.remove('onboarding_done');
+
+              // ✅ 3. KE SPLASH SCREEN
               if (context.mounted) {
                 Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  (_) => false,
+                  MaterialPageRoute(builder: (_) => const SplashScreen()),
+                  (route) => false,
                 );
               }
             },
@@ -965,9 +985,10 @@ class _EditProfileSheet extends StatefulWidget {
   final AuthProvider auth;
   final VoidCallback onUpdated;
   final VoidCallback onChangePhoto;
+
   const _EditProfileSheet({
-    required this.auth, 
-    required this.onUpdated, 
+    required this.auth,
+    required this.onUpdated,
     required this.onChangePhoto,
   });
 
@@ -1063,7 +1084,6 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
         builder: (context, scrollController) {
           return Column(
             children: [
-              // Handle
               Container(
                 margin: const EdgeInsets.only(top: 12),
                 width: 40,
@@ -1073,7 +1093,6 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              // Header
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
@@ -1101,72 +1120,13 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                   ],
                 ),
               ),
-              // Form
               Expanded(
                 child: ListView(
                   controller: scrollController,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   children: [
-                    // Avatar Section
-                    Center(
-                      child: Stack(
-                        children: [
-                          Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              color: AppTheme.forest,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppTheme.forest.withOpacity(0.3),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              _nameCtrl.text.isEmpty
-                                  ? '?'
-                                  : _nameCtrl.text[0].toUpperCase(),
-                              style: GoogleFonts.nunito(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w900,
-                                color: AppTheme.cream,
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: GestureDetector(
-                              onTap: () {
-                                Navigator.pop(context);
-                                Future.delayed(const Duration(milliseconds: 300), () {
-                                  widget.onChangePhoto();
-                                });
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: const BoxDecoration(
-                                  color: AppTheme.sage,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.camera_alt,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildAvatarSection(),
                     const SizedBox(height: 24),
-
-                    // Nama Lengkap
                     _buildTextField(
                       controller: _nameCtrl,
                       label: 'Nama Lengkap',
@@ -1175,8 +1135,6 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                       enabled: !_isLoading,
                     ),
                     const SizedBox(height: 16),
-
-                    // Email
                     _buildTextField(
                       controller: _emailCtrl,
                       label: 'Email',
@@ -1186,8 +1144,6 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                       enabled: !_isLoading,
                     ),
                     const SizedBox(height: 16),
-
-                    // Nomor Telepon
                     _buildTextField(
                       controller: _phoneCtrl,
                       label: 'Nomor Telepon',
@@ -1197,8 +1153,6 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                       enabled: !_isLoading,
                     ),
                     const SizedBox(height: 16),
-
-                    // Bio
                     _buildTextField(
                       controller: _bioCtrl,
                       label: 'Bio / Deskripsi Diri',
@@ -1208,83 +1162,11 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                       enabled: !_isLoading,
                     ),
                     const SizedBox(height: 20),
-
-                    // Notifikasi
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.notifications_outlined,
-                            color: AppTheme.sage,
-                            size: 22,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Notifikasi',
-                                  style: GoogleFonts.nunito(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppTheme.forest,
-                                  ),
-                                ),
-                                Text(
-                                  'Terima pengingat dan tips eco',
-                                  style: GoogleFonts.nunito(
-                                    fontSize: 12,
-                                    color: AppTheme.grey,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Switch(
-                            value: _notificationsEnabled,
-                            activeColor: AppTheme.sage,
-                            onChanged: _isLoading
-                                ? null
-                                : (v) => setState(() => _notificationsEnabled = v),
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildNotificationSwitch(),
                     const SizedBox(height: 24),
-
-                    // Tombol Simpan
-                    SizedBox(
-                      width: double.infinity,
-                      child: EcoButton(
-                        label: _isLoading ? 'Menyimpan...' : 'Simpan Perubahan',
-                        onTap: _isLoading ? null : _saveProfile,
-                        color: AppTheme.sage,
-                        icon: _isLoading ? null : Icons.save_outlined,
-                      ),
-                    ),
+                    _buildSaveButton(),
                     const SizedBox(height: 20),
-
-                    // Tombol Ubah Password
-                    Center(
-                      child: TextButton.icon(
-                        onPressed: _isLoading
-                            ? null
-                            : () {
-                                Navigator.pop(context);
-                                _showChangePasswordDialog(context);
-                              },
-                        icon: const Icon(Icons.lock_outline, color: AppTheme.terra),
-                        label: Text(
-                          'Ubah Password',
-                          style: GoogleFonts.nunito(
-                            color: AppTheme.terra,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
+                    _buildChangePasswordButton(),
                     const SizedBox(height: 20),
                   ],
                 ),
@@ -1292,6 +1174,143 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildAvatarSection() {
+    return Center(
+      child: Stack(
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: AppTheme.forest,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.forest.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              _nameCtrl.text.isEmpty
+                  ? '?'
+                  : _nameCtrl.text[0].toUpperCase(),
+              style: GoogleFonts.nunito(
+                fontSize: 32,
+                fontWeight: FontWeight.w900,
+                color: AppTheme.cream,
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: GestureDetector(
+              onTap: () {
+                Navigator.pop(context);
+                Future.delayed(const Duration(milliseconds: 300), () {
+                  widget.onChangePhoto();
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(
+                  color: AppTheme.sage,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.camera_alt,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotificationSwitch() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        children: [
+          Icon(
+            Icons.notifications_outlined,
+            color: AppTheme.sage,
+            size: 22,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Notifikasi',
+                  style: GoogleFonts.nunito(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.forest,
+                  ),
+                ),
+                Text(
+                  'Terima pengingat dan tips eco',
+                  style: GoogleFonts.nunito(
+                    fontSize: 12,
+                    color: AppTheme.grey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: _notificationsEnabled,
+            activeColor: AppTheme.sage,
+            onChanged: _isLoading
+                ? null
+                : (v) => setState(() => _notificationsEnabled = v),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: EcoButton(
+        label: _isLoading ? 'Menyimpan...' : '💾 Simpan Perubahan',
+        onTap: _isLoading ? null : _saveProfile,
+        color: AppTheme.sage,
+        icon: _isLoading ? null : Icons.save_outlined,
+      ),
+    );
+  }
+
+  Widget _buildChangePasswordButton() {
+    return Center(
+      child: TextButton.icon(
+        onPressed: _isLoading
+            ? null
+            : () {
+                Navigator.pop(context);
+                _showChangePasswordDialog(context);
+              },
+        icon: const Icon(Icons.lock_outline, color: AppTheme.terra),
+        label: Text(
+          'Ubah Password',
+          style: GoogleFonts.nunito(
+            color: AppTheme.terra,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }

@@ -17,39 +17,68 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<String?> login(String email, String password) async {
+    if (email.trim().isEmpty) {
+      return 'Email tidak boleh kosong';
+    }
+    if (password.trim().isEmpty) {
+      return 'Password tidak boleh kosong';
+    }
+
     final hash = _hashPassword(password);
-    final user = await StorageService.getUserByEmail(email);
-    if (user == null) return 'Email tidak terdaftar';
-    if (user.passwordHash != hash) return 'Password salah';
+    final user = await StorageService.getUserByEmail(email.trim());
+
+    if (user == null) {
+      return 'Email tidak terdaftar';
+    }
+    if (user.passwordHash != hash) {
+      return 'Password salah';
+    }
+
     _user = user;
     await StorageService.setCurrentUser(user.id);
     await StorageService.checkWishlistUnlocks(user.id);
     notifyListeners();
+
     return null;
   }
 
   Future<String?> register(String name, String email, String password) async {
-    if (name.trim().isEmpty) return 'Nama tidak boleh kosong';
-    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
+    final nameTrim = name.trim();
+    final emailTrim = email.trim();
+    final passTrim = password.trim();
+
+    if (nameTrim.isEmpty) {
+      return 'Nama tidak boleh kosong';
+    }
+    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(emailTrim)) {
       return 'Format email tidak valid';
     }
-    if (password.length < 6) return 'Password minimal 6 karakter';
-    
-    final existing = await StorageService.getUserByEmail(email);
-    if (existing != null) return 'Email sudah terdaftar';
-    
+    if (passTrim.length < 6) {
+      return 'Password minimal 6 karakter';
+    }
+
+    final existing = await StorageService.getUserByEmail(emailTrim);
+    if (existing != null) {
+      return 'Email sudah terdaftar';
+    }
+
     final user = AppUser(
       id: 'user_${DateTime.now().millisecondsSinceEpoch}',
-      name: name.trim(),
-      email: email.trim(),
-      passwordHash: _hashPassword(password),
+      name: nameTrim,
+      email: emailTrim,
+      passwordHash: _hashPassword(passTrim),
       createdAt: DateTime.now(),
     );
-    
-    await StorageService.registerUser(user);
+
+    final success = await StorageService.registerUser(user);
+    if (!success) {
+      return 'Gagal mendaftar, silakan coba lagi';
+    }
+
     _user = user;
     await StorageService.setCurrentUser(user.id);
     notifyListeners();
+
     return null;
   }
 
@@ -66,17 +95,29 @@ class AuthProvider extends ChangeNotifier {
     String? bio,
     bool? notificationsEnabled,
   }) async {
-    if (_user == null) return;
+    if (_user == null) {
+      throw Exception('User tidak ditemukan');
+    }
+
+    // ✅ Validasi nama tidak boleh kosong
+    if (name != null && name.trim().isEmpty) {
+      throw Exception('Nama tidak boleh kosong');
+    }
+
+    // ✅ Validasi email
+    if (email != null && !RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email.trim())) {
+      throw Exception('Format email tidak valid');
+    }
 
     final updated = AppUser(
       id: _user!.id,
-      name: name ?? _user!.name,
-      email: email ?? _user!.email,
+      name: name?.trim() ?? _user!.name,
+      email: email?.trim() ?? _user!.email,
       passwordHash: _user!.passwordHash,
       createdAt: _user!.createdAt,
       notificationsEnabled: notificationsEnabled ?? _user!.notificationsEnabled,
-      phone: phone ?? _user!.phone,
-      bio: bio ?? _user!.bio,
+      phone: phone != null && phone.trim().isNotEmpty ? phone.trim() : _user!.phone,
+      bio: bio != null && bio.trim().isNotEmpty ? bio.trim() : _user!.bio,
     );
 
     await StorageService.updateUser(updated);
@@ -84,7 +125,18 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ✅ Tambahkan fungsi untuk reload user (berguna setelah update)
+  Future<void> refreshUser() async {
+    if (_user == null) return;
+    final updatedUser = await StorageService.getUserByEmail(_user!.email);
+    if (updatedUser != null) {
+      _user = updatedUser;
+      notifyListeners();
+    }
+  }
+
   String _hashPassword(String password) {
+    // Simple hash untuk development
     var hash = 0;
     for (var i = 0; i < password.length; i++) {
       hash = ((hash << 5) - hash + password.codeUnitAt(i)) & 0xFFFFFFFF;
