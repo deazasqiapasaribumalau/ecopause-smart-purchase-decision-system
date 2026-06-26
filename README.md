@@ -349,9 +349,9 @@ SplashScreen (~2.4 detik animasi)
 |:---:|:---:|:---:|:---:|
 | ![Onboarding 1](https://i.ibb.co.com/ZzDPcJk1/Screenshot-2026-06-26-151152.png) | ![Onboarding 2](https://i.ibb.co.com/zTF5mZz4/Screenshot-2026-06-26-151209.png) | ![Onboarding 3](https://i.ibb.co.com/R4pPF22b/Screenshot-2026-06-26-151220.png) | ![Landing Page](https://i.ibb.co.com/MyVJhbmh/Screenshot-2026-06-26-151229.png) |
 
-| Login | Register | Home Dashboard | Detail Belanja |
+| Login | Register | Home Dashboard | Fomo Detector |
 |:---:|:---:|:---:|:---:|
-| ![Login](https://i.ibb.co.com/HTjP9THn/Screenshot-2026-06-26-151243.png) | ![Register](https://i.ibb.co.com/ZRCpGLP2/Screenshot-2026-06-26-151251.png) | ![Home Dashboard](https://i.ibb.co.com/mrRJzhTX/Screenshot-2026-06-26-151324.png) | ![Detail Belanja](https://i.ibb.co.com/d0k91Hjf/Screenshot-2026-06-26-151335.png) |
+| ![Login](https://i.ibb.co.com/HTjP9THn/Screenshot-2026-06-26-151243.png) | ![Register](https://i.ibb.co.com/ZRCpGLP2/Screenshot-2026-06-26-151251.png) | ![Home Dashboard](https://i.ibb.co.com/mrRJzhTX/Screenshot-2026-06-26-151324.png) | ![Fomo Detector](https://i.ibb.co.com/d0k91Hjf/Screenshot-2026-06-26-151335.png) |
 
 ### Fitur Utama
 
@@ -359,13 +359,13 @@ SplashScreen (~2.4 detik animasi)
 |:---:|:---:|:---:|:---:|
 | ![FOMO Detector](https://i.ibb.co.com/bMF4ZgQ4/Screenshot-2026-06-26-151408.png) | ![Hasil Evaluasi](https://i.ibb.co.com/kgQWpMmq/Screenshot-2026-06-26-151436.png) | ![Smart Wishlist](https://i.ibb.co.com/gbMgm6Dp/Screenshot-2026-06-26-151448.png) | ![Wishlist Unlocked](https://i.ibb.co.com/fYVdWmgF/Screenshot-2026-06-26-151455.png) |
 
-| JejakBelanja | Detail JejakBelanja | Monthly Report | Monthly Report 2 |
+| Wishlist Akhir | Detail JejakBelanja | Monthly Report | Profil |
 |:---:|:---:|:---:|:---:|
-| ![JejakBelanja](https://i.ibb.co.com/Q3N7pvFm/Screenshot-2026-06-26-151504.png) | ![Detail JejakBelanja](https://i.ibb.co.com/VYvDLq7F/Screenshot-2026-06-26-151513.png) | ![Monthly Report](https://i.ibb.co.com/MxKN7dJc/Screenshot-2026-06-26-151520.png) | ![Monthly Report 2](https://i.ibb.co.com/S4tZ1f5r/Screenshot-2026-06-26-151529.png) |
+| ![Wishlist Akhir](https://i.ibb.co.com/Q3N7pvFm/Screenshot-2026-06-26-151504.png) | ![Detail JejakBelanja](https://i.ibb.co.com/VYvDLq7F/Screenshot-2026-06-26-151513.png) | ![Monthly Report](https://i.ibb.co.com/MxKN7dJc/Screenshot-2026-06-26-151520.png) | ![Profil](https://i.ibb.co.com/S4tZ1f5r/Screenshot-2026-06-26-151529.png) |
 
-| Profil | Splash Screen |
+| Notifikasi | Splash Screen |
 |:---:|:---:|
-| ![Profil](https://i.ibb.co.com/HDMPmVJh/Screenshot-2026-06-26-151537.png) | ![Splash Screen](https://i.ibb.co.com/wFr5HZ7Y/Screenshot-2026-06-26-151620.png) |
+| ![Notifikasi](https://i.ibb.co.com/HDMPmVJh/Screenshot-2026-06-26-151537.png) | ![Splash Screen](https://i.ibb.co.com/wFr5HZ7Y/Screenshot-2026-06-26-151620.png) |
 
 ---
 
